@@ -6,8 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const email_router_1 = __importDefault(require("./routers/email_router"));
+const email_router_1 = __importDefault(require("./routers/email-router"));
 const db_1 = require("./config/db");
+const passport_1 = __importDefault(require("./config/passport"));
+const login_router_1 = __importDefault(require("./routers/login-router"));
 dotenv_1.default.config();
 const app = express_1.default();
 app.use(cors_1.default());
@@ -17,6 +19,8 @@ app.get("/", async (_req, res) => {
     res.json(rows);
 });
 app.use(email_router_1.default);
+app.use(passport_1.default.initialize());
+app.use("/auth", login_router_1.default);
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

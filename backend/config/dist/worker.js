@@ -61,7 +61,7 @@ function startOfNextHour(date) {
     return d;
 }
 new bullmq_1.Worker("email-queue", function (job) { return __awaiter(void 0, void 0, void 0, function () {
-    var emailJobId, jobRows, emailJob, batchRows, _a, sender_email, hourly_limit, now, hourKey, currentCount, nextRun, delayMs, lockResult, transporter, info, err_1, attempts;
+    var emailJobId, jobRows, emailJob, batchRows, _a, sender_email, hourly_limit, now, hourKey, currentCount, nextRun, delayMs, lockResult, info, err_1, attempts;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -126,33 +126,30 @@ new bullmq_1.Worker("email-queue", function (job) { return __awaiter(void 0, voi
                 }
                 _b.label = 10;
             case 10:
-                _b.trys.push([10, 14, , 17]);
-                return [4 /*yield*/, mailer_1.createTransporter()];
-            case 11:
-                transporter = (_b.sent()).transporter;
-                return [4 /*yield*/, transporter.sendMail({
+                _b.trys.push([10, 13, , 16]);
+                return [4 /*yield*/, mailer_1.transporter.sendMail({
                         from: sender_email,
                         to: emailJob.recipient_email,
                         subject: "Scheduled Email",
                         text: "Hello from Email Scheduler"
                     })];
-            case 12:
+            case 11:
                 info = _b.sent();
                 console.log("Email sent. Preview URL:", nodemailer_1["default"].getTestMessageUrl(info));
                 return [4 /*yield*/, db_1.db.query("UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = ?", [emailJob.id])];
-            case 13:
+            case 12:
                 _b.sent();
-                return [3 /*break*/, 17];
-            case 14:
+                return [3 /*break*/, 16];
+            case 13:
                 err_1 = _b.sent();
                 attempts = job.attemptsMade + 1;
-                if (!(attempts >= 3)) return [3 /*break*/, 16];
+                if (!(attempts >= 3)) return [3 /*break*/, 15];
                 return [4 /*yield*/, db_1.db.query("UPDATE email_jobs SET status = 'failed', error_message = ? WHERE id = ?", [err_1.message, emailJob.id])];
-            case 15:
+            case 14:
                 _b.sent();
-                _b.label = 16;
-            case 16: throw err_1;
-            case 17: return [2 /*return*/];
+                _b.label = 15;
+            case 15: throw err_1;
+            case 16: return [2 /*return*/];
         }
     });
 }); }, {

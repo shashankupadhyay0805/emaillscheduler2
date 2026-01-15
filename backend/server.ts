@@ -1,8 +1,10 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import emailRoutes from "./routers/email_router";
+import emailRoutes from "./routers/email-router";
 import { db } from "./config/db";
+import passport from "./config/passport";
+import authRoutes from "./routers/login-router";
 
 dotenv.config();
 
@@ -16,6 +18,8 @@ app.get("/", async (_req, res) => {
 });
 
 app.use(emailRoutes);
+app.use(passport.initialize());
+app.use("/auth", authRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

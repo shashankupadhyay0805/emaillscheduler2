@@ -1,20 +1,11 @@
 import nodemailer from "nodemailer";
 
-export async function createTransporter() {
-  const testAccount = await nodemailer.createTestAccount();
-
-  const transporter = nodemailer.createTransport({
-    host: testAccount.smtp.host,
-    port: testAccount.smtp.port,
-    secure: testAccount.smtp.secure,
-    auth: {
-      user: testAccount.user,
-      pass: testAccount.pass,
-    },
-  });
-
-  return {
-    transporter,
-    previewUrl: testAccount.web,
-  };
-}
+export const transporter = nodemailer.createTransport({
+  host: "smtp.ethereal.email",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.ETHEREAL_USER!,
+    pass: process.env.ETHEREAL_PASS!,
+  },
+});

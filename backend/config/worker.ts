@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import { db } from "./db";
 import { emailQueue } from "./queue";
 import nodemailer from "nodemailer";
-import { createTransporter } from "./mailer";
+import { transporter } from "./mailer";
 
 dotenv.config();
 
@@ -118,9 +118,7 @@ new Worker(
 
     // SMTP
     try {
-    const { transporter } = await createTransporter();
-
-    const info = await transporter.sendMail({
+      const info = await transporter.sendMail({
       from: sender_email,
       to: emailJob.recipient_email,
       subject: "Scheduled Email",

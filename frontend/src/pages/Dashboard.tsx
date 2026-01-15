@@ -2,31 +2,108 @@ import { useEffect, useState } from "react";
 import Header from "../components/Header";
 import Tabs from "../components/Tabs";
 import { useNavigate } from "react-router-dom";
-
+import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 type TabType = "scheduled" | "sent";
+interface JwtPayload {
+  userId: string;
+  email: string;
+  exp: number;
+}
 
 export default function Dashboard() {
-  const navigate = useNavigate(); // ✅ Navigation enabled
+  const navigate = useNavigate();
+
+  // 🔹 Decode user from JWT
+  const token = localStorage.getItem("token");
+  if (!token) {
+    navigate("/");
+  }
+
+  const user = token ? (jwtDecode(token) as JwtPayload) : null;
 
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const saved = localStorage.getItem("activeTab");
     return (saved as TabType) || "scheduled";
   });
 
+  const [userProfile, setUserProfile] = useState<{
+  name: string;
+  email: string;
+  avatar_url: string | null;
+} | null>(null);
+
   const [search, setSearch] = useState("");
+
+  // 🔹 Counts from backend
+  const [scheduledCount, setScheduledCount] = useState(0);
+  const [sentCount, setSentCount] = useState(0);
+
+  // 🔹 Axios config (LOCAL, no separate file)
+  const api = axios.create({
+    baseURL: "http://localhost:4000",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
   // ✅ Persist tab on refresh
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
   }, [activeTab]);
 
+  useEffect(() => {
+  async function fetchProfile() {
+    try {
+      const res = await axios.get(
+        "http://localhost:4000/auth/me",
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      setUserProfile(res.data);
+    } catch (err) {
+      console.error("Failed to fetch profile", err);
+    }
+  }
+
+  fetchProfile();
+}, []);
+
+
+  // 🔹 Fetch counts on load
+  useEffect(() => {
+    async function fetchCounts() {
+      try {
+        const [scheduledRes, sentRes] = await Promise.all([
+          api.get("/scheduled"),
+          api.get("/sent"),
+        ]);
+
+        setScheduledCount(scheduledRes.data.length);
+        setSentCount(sentRes.data.length);
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err)) {
+          if (err.response?.status === 401) {
+            localStorage.removeItem("token");
+            navigate("/");
+          }
+        } else {
+          console.error("Unexpected error", err);
+        }
+      }
+    }
+
+    fetchCounts();
+  }, []);
+
   // ✅ Refresh handler
   const handleRefresh = () => {
-    setSearch("");
-    window.location.reload(); // later replace with API refresh
+    window.location.reload();
   };
 
-  // ✅ Filter handler (future enhancement)
   const handleFilter = () => {
     alert("Filter feature coming soon 🙂");
   };
@@ -37,22 +114,25 @@ export default function Dashboard() {
       <aside className="w-64 bg-white border-r p-4">
         <h1 className="text-2xl font-bold mb-6">ONG</h1>
 
-        {/* User */}
+        {/* 🔹 User from JWT */}
         <div className="flex items-center gap-3 mb-6 rounded-lg bg-gray-50 p-3">
           <img
-            src="https://i.pravatar.cc/40"
+            src={
+              userProfile?.avatar_url ??
+              "https://ui-avatars.com/api/?name=User"
+            }
             className="h-10 w-10 rounded-full"
             alt="User"
           />
           <div>
-            <p className="text-sm font-medium">Oliver Brown</p>
-            <p className="text-xs text-gray-400">
-              oliver.brown@domain.io
+            <p className="text-sm font-medium">
+              {user?.email.split("@")[0]}
             </p>
+            <p className="text-xs text-gray-400">{user?.email}</p>
           </div>
         </div>
 
-        {/* ✅ Compose Button */}
+        {/* Compose */}
         <button
           onClick={() => navigate("/compose")}
           className="w-full mb-6 rounded-full border border-green-500 text-green-600 py-2 font-medium hover:bg-green-50 transition"
@@ -73,7 +153,7 @@ export default function Dashboard() {
         >
           <span>Scheduled</span>
           <span className="text-xs bg-green-200 px-2 rounded-full">
-            12
+            {scheduledCount}
           </span>
         </button>
 
@@ -88,7 +168,7 @@ export default function Dashboard() {
         >
           <span>Sent</span>
           <span className="text-xs bg-gray-200 px-2 rounded-full">
-            785
+            {sentCount}
           </span>
         </button>
       </aside>

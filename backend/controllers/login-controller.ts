@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { db } from "../config/db";
 
 export const googleCallbackController = (req: Request, res: Response) => {
   const user = req.user as any;
@@ -21,14 +22,22 @@ export const googleCallbackController = (req: Request, res: Response) => {
     { expiresIn: "7d" }
   );
 
-  return res.json({
-    message: "Google login successful",
-    token,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      avatar: user.avatar_url,
-    },
-  });
+  return res.redirect(
+  `http://localhost:5173/auth/callback?token=${token}`
+);
 };
+
+export async function getMe(req: Request, res: Response) {
+  const userId = (req as any).user.userId;
+
+  const [rows]: any = await db.query(
+    "SELECT id, name, email, avatar_url FROM users WHERE id = ?",
+    [userId]
+  );
+
+  if (rows.length === 0) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  res.json(rows[0]);
+}

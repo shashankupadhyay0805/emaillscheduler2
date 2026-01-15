@@ -2,20 +2,38 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Compose from "./pages/Compose";
 import MailView from "./pages/MailView";
+import Login from "./pages/Login";
+import AuthCallback from "./pages/AuthCallback"
+
+const isAuthenticated = () => {
+  return Boolean(localStorage.getItem("token"));
+};
 
 export default function App() {
   return (
     <Routes>
-      {/* ✅ Default route */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Login />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route
+        path="/dashboard"
+        element={
+          isAuthenticated() ? <Dashboard /> : <Navigate to="/" replace />
+        }
+      />
+      <Route
+        path="/compose"
+        element={
+          isAuthenticated() ? <Compose /> : <Navigate to="/" replace />
+        }
+      />
+      <Route
+        path="/mail/:id"
+        element={
+          isAuthenticated() ? <MailView /> : <Navigate to="/" replace />
+        }
+      />
 
-      {/* Main Pages */}
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/compose" element={<Compose />} />
-      <Route path="/mail/:id" element={<MailView />} />
-
-      {/* ❌ Optional fallback */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

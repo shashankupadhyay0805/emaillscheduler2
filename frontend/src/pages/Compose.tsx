@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { emails } from "../data/emails";
-import type { Email } from "../data/emails";
+import axios from "axios"; // 🔹 NEW
 
 export default function Compose() {
   const navigate = useNavigate();
@@ -13,16 +12,20 @@ export default function Compose() {
   const [scheduledTime, setScheduledTime] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
 
-  // 📎 Attachment
+  const token = localStorage.getItem("token");
+
+  // 📎 Attachment (UI only for now)
   const handleAttach = (file: File | null) => {
     if (!file) return;
     setAttachment(file);
     alert(`Attached: ${file.name}`);
   };
 
-  // ⏰ Preset schedule
-  const selectPreset = (label: string) => {
-    setScheduledTime(label);
+  // ❌ Presets now set actual datetime
+  const selectPreset = (hoursFromNow: number) => {
+    const date = new Date();
+    date.setHours(date.getHours() + hoursFromNow);
+    setScheduledTime(date.toISOString());
   };
 
   // ❌ Cancel scheduling
@@ -31,37 +34,53 @@ export default function Compose() {
     setShowScheduler(false);
   };
 
-  // ✅ Done scheduling
-  const confirmSchedule = () => {
-    if (!scheduledTime) {
-      alert("Please select a time");
-      return;
-    }
-    alert(`Email scheduled for ${scheduledTime}`);
-    setShowScheduler(false);
-  };
-
-  // ✉️ Send email
-  const handleSend = () => {
+  // ✉️ SEND / SCHEDULE EMAIL (REAL)
+  const handleSend = async () => {
     if (!to || !subject || !body) {
       alert("Please fill all fields");
       return;
     }
 
-    const newMail: Email = {
-      id: Date.now(),
-      to,
-      subject,
-      preview: body.slice(0, 60),
-      body,
-      status: scheduledTime ? "scheduled" : "sent",
-      time: scheduledTime ?? "Just now",
-      starred: false,
-    };
+    if (!token) {
+      alert("Not authenticated");
+      navigate("/");
+      return;
+    }
 
-    emails.unshift(newMail); // mock save
-    alert(scheduledTime ? "Email scheduled ✅" : "Email sent ✅");
-    navigate("/dashboard");
+    const recipients = to
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean);
+
+    try {
+      await axios.post(
+        "http://localhost:4000/schedule",
+        {
+          senderEmail: "no-reply@ong.app", // later dynamic
+          subject,
+          body,
+          startTime: scheduledTime ?? new Date().toISOString(),
+          delayBetweenEmailsSeconds: 2,
+          recipients,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      alert(
+        scheduledTime
+          ? "Emails scheduled successfully ✅"
+          : "Emails sent successfully ✅"
+      );
+
+      navigate("/dashboard");
+    } catch (err) {
+      alert("Failed to schedule emails");
+      console.error(err);
+    }
   };
 
   return (
@@ -117,7 +136,7 @@ export default function Compose() {
             <div className="flex gap-4">
               <span className="w-16 text-gray-500">From</span>
               <select className="rounded bg-gray-100 px-3 py-1">
-                <option>oliver.brown@domain.io</option>
+                <option>no-reply@ong.app</option>
               </select>
             </div>
 
@@ -126,7 +145,7 @@ export default function Compose() {
               <input
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
-                placeholder="recipient@example.com"
+                placeholder="a@test.com, b@test.com"
                 className="flex-1 border-b outline-none"
               />
             </div>
@@ -144,7 +163,7 @@ export default function Compose() {
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Type your reply..."
+              placeholder="Type your email..."
               className="mt-4 flex-1 resize-none rounded-lg border p-4 outline-none"
             />
           </div>
@@ -157,24 +176,26 @@ export default function Compose() {
               <input
                 type="datetime-local"
                 className="mb-4 w-full rounded border px-3 py-2"
-                onChange={(e) => setScheduledTime(e.target.value)}
+                onChange={(e) =>
+                  setScheduledTime(
+                    new Date(e.target.value).toISOString()
+                  )
+                }
               />
 
               <div className="space-y-2 text-sm">
-                {[
-                  "Tomorrow",
-                  "Tomorrow 10:00 AM",
-                  "Tomorrow 11:00 AM",
-                  "Tomorrow 3:00 PM",
-                ].map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => selectPreset(t)}
-                    className="block w-full rounded px-2 py-1 text-left hover:bg-gray-100"
-                  >
-                    {t}
-                  </button>
-                ))}
+                <button
+                  onClick={() => selectPreset(24)}
+                  className="block w-full rounded px-2 py-1 text-left hover:bg-gray-100"
+                >
+                  Tomorrow
+                </button>
+                <button
+                  onClick={() => selectPreset(10)}
+                  className="block w-full rounded px-2 py-1 text-left hover:bg-gray-100"
+                >
+                  In 10 hours
+                </button>
               </div>
 
               <div className="mt-6 flex justify-between">
@@ -185,7 +206,7 @@ export default function Compose() {
                   Cancel
                 </button>
                 <button
-                  onClick={confirmSchedule}
+                  onClick={() => setShowScheduler(false)}
                   className="rounded-full border border-green-500 px-4 py-1 text-green-600 hover:bg-green-50"
                 >
                   Done
@@ -198,5 +219,3 @@ export default function Compose() {
     </div>
   );
 }
-
-

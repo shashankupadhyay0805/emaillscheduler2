@@ -1,56 +1,29 @@
-import { useGoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../auth/useAuth";
 import { useEffect } from "react";
 
-interface GooglePayload {
-  name: string;
-  email: string;
-  picture: string;
-}
-
 export default function Login() {
-  const { login, user } = useAuth();
   const navigate = useNavigate();
 
-  const googleLogin = useGoogleLogin({
-    onSuccess: (tokenResponse) => {
-      fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: {
-          Authorization: `Bearer ${tokenResponse.access_token}`,
-        },
-      })
-        .then((res) => res.json())
-        .then((profile: GooglePayload) => {
-          login({
-            name: profile.name,
-            email: profile.email,
-            picture: profile.picture,
-          });
-          navigate("/dashboard");
-        });
-    },
-    onError: () => alert("Google Login Failed"),
-  });
+  const loginWithGoogle = () => {
+    window.location.href = "http://localhost:4000/auth/google";
+  };
 
-  // ✅ Safe redirect when already logged in
   useEffect(() => {
-    if (user) {
+    const token = localStorage.getItem("token");
+    if (token) {
       navigate("/dashboard");
     }
-  }, [user, navigate]);
+  }, [navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-[420px] rounded-xl bg-white p-10 shadow-lg">
-        {/* Title */}
         <h1 className="mb-6 text-center text-2xl font-semibold text-gray-800">
           Login
         </h1>
 
-        {/* Google Button */}
         <button
-          onClick={() => googleLogin()}
+          onClick={loginWithGoogle}
           className="mb-4 flex w-full items-center justify-center gap-3 rounded-md bg-green-50 py-3 text-sm font-medium text-gray-700 transition hover:bg-green-100"
         >
           {/* Google SVG Icon */}
@@ -72,9 +45,8 @@ export default function Login() {
               d="M24 46c6.48 0 11.92-2.14 15.89-5.81l-7.23-5.61c-2.01 1.35-4.58 2.14-8.66 2.14-6.45 0-11.91-3.59-13.73-8.97l-6.91 5.36C6.91 40.62 14.73 46 24 46z"
             />
           </svg>
-
-          Login with Google
-        </button>
+            Login with Google
+          </button>
 
         {/* Divider */}
         <div className="my-4 flex items-center gap-3">
@@ -108,4 +80,3 @@ export default function Login() {
     </div>
   );
 }
-

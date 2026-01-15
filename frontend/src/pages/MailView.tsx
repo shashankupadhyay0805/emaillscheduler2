@@ -1,37 +1,69 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { emails } from "../data/emails";
+import { useEffect, useState } from "react";
+import axios from "axios";
+
+interface Mail {
+  id: string;
+  recipient_email: string;
+  subject: string;
+  body: string;
+  status: "scheduled" | "sent";
+  scheduled_at?: string;
+  sent_at?: string;
+}
 
 export default function MailView() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const mail = emails.find((m) => m.id === Number(id));
-  const [isStarred, setIsStarred] = useState(mail?.starred ?? false);
+  const [mail, setMail] = useState<Mail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isStarred, setIsStarred] = useState(false); // UI-only
+
+  const token = localStorage.getItem("token");
+
+  useEffect(() => {
+    async function fetchMail() {
+      if (!token) {
+        navigate("/");
+        return;
+      }
+
+      try {
+        const res = await axios.get(
+          `http://localhost:4000/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setMail(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchMail();
+  }, [id]);
+
+  if (loading) {
+    return <div className="p-10 text-gray-400">Loading email...</div>;
+  }
 
   if (!mail) {
     return <div className="p-10">Mail not found</div>;
   }
 
-  const senderName = mail.to;
-  const senderEmail = "sender@example.com"; // later from backend
+  const senderName = mail.recipient_email.split("@")[0];
   const avatarLetter = senderName.charAt(0).toUpperCase();
-
-  // ⭐ Toggle star
-  const handleStar = () => {
-    setIsStarred((prev) => !prev);
-  };
-
-  // 🗑️ Delete mail
-  const handleDelete = () => {
-    alert("Mail deleted (mock)");
-    navigate(-1);
-  };
-
-  // 👤 Profile click
-  const handleProfileClick = () => {
-    alert("Profile clicked (future menu)");
-  };
+  const time =
+    mail.status === "scheduled"
+      ? mail.scheduled_at
+      : mail.sent_at;
 
   return (
     <div className="flex h-screen flex-col bg-white">
@@ -41,48 +73,37 @@ export default function MailView() {
           <button
             onClick={() => navigate(-1)}
             className="text-xl text-gray-600 hover:text-green-600"
-            title="Back"
           >
             ←
           </button>
 
           <h1 className="text-xl font-semibold text-gray-900">
-            {mail.subject} | MJWYT44 BM#52W01
+            {mail.subject}
           </h1>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-5">
-          {/* ⭐ Star */}
+          {/* ⭐ Star (UI only) */}
           <button
-            onClick={handleStar}
-            className={`text-2xl transition ${
+            onClick={() => setIsStarred((p) => !p)}
+            className={`text-2xl ${
               isStarred
                 ? "text-yellow-500"
                 : "text-gray-400 hover:text-yellow-500"
             }`}
-            title="Star"
           >
             {isStarred ? "⭐" : "☆"}
           </button>
 
-          {/* 🗑️ Delete */}
+          {/* 🗑️ Delete (UI only) */}
           <button
-            onClick={handleDelete}
-            className="text-2xl text-gray-400 transition hover:text-red-500"
-            title="Delete"
+            onClick={() => {
+              alert("Delete coming soon");
+              navigate(-1);
+            }}
+            className="text-2xl text-gray-400 hover:text-red-500"
           >
             🗑️
-          </button>
-
-          <div className="h-9 w-[1px] bg-gray-300" />
-
-          {/* 👤 Profile */}
-          <button onClick={handleProfileClick} title="Profile">
-            <img
-              src="https://i.pravatar.cc/40"
-              className="h-9 w-9 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-green-400"
-            />
           </button>
         </div>
       </div>
@@ -92,34 +113,26 @@ export default function MailView() {
         {/* Sender Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-start gap-4">
-            {/* Avatar */}
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500 text-lg font-semibold text-white">
               {avatarLetter}
             </div>
 
-            {/* Sender Info */}
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <p className="text-base font-semibold text-gray-900">
-                  {senderName}
-                </p>
-                <p className="text-sm text-gray-500">
-                  &lt;{senderEmail}&gt;
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1 text-sm text-gray-500">
-                <span>to me</span>
-                <span className="cursor-pointer">⌄</span>
-              </div>
+            <div>
+              <p className="font-semibold text-gray-900">
+                {senderName}
+              </p>
+              <p className="text-sm text-gray-500">
+                &lt;{mail.recipient_email}&gt;
+              </p>
             </div>
           </div>
 
-          {/* Date */}
-          <p className="text-sm text-gray-500">Nov 3, 10:23 AM</p>
+          <p className="text-sm text-gray-500">
+            {time ? new Date(time).toLocaleString() : ""}
+          </p>
         </div>
 
-        {/* Mail Body */}
+        {/* Body */}
         <div className="max-w-4xl whitespace-pre-line text-gray-700 leading-relaxed">
           {mail.body}
         </div>

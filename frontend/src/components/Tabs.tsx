@@ -1,57 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios, { AxiosError } from "axios";
 
-export interface Email {
-  id: number;
-  to: string;
+interface Email {
+  id: string;
+  recipient_email: string;
   subject: string;
-  preview: string;
+  scheduled_at?: string;
+  sent_at?: string;
   status: "scheduled" | "sent";
-  time: string;
-  starred: boolean;
 }
-
-const initialEmails: Email[] = [
-  // ✅ Scheduled
-  {
-    id: 1,
-    to: "John Smith",
-    subject: "Meeting follow-up",
-    preview: "Hi John, just wanted to follow up on our meeting...",
-    status: "scheduled",
-    time: "Tue 9:15 AM",
-    starred: false,
-  },
-  {
-    id: 2,
-    to: "Olive",
-    subject: "Ramit, great to meet you",
-    preview: "Hi Olive, just wanted to follow up on our meeting...",
-    status: "scheduled",
-    time: "Thu 8:15 PM",
-    starred: false,
-  },
-
-  // ✅ Sent
-  {
-    id: 3,
-    to: "Sarah Wilson",
-    subject: "Re: Project Update",
-    preview: "Thanks for the update, Sarah. Looks good!",
-    status: "sent",
-    time: "Mon 6:30 PM",
-    starred: true,
-  },
-  {
-    id: 4,
-    to: "Support",
-    subject: "Issue with login",
-    preview: "I am having trouble logging into the dashboard...",
-    status: "sent",
-    time: "Sun 2:10 PM",
-    starred: false,
-  },
-];
 
 interface TabsProps {
   activeTab: "scheduled" | "sent";
@@ -59,32 +17,68 @@ interface TabsProps {
 }
 
 export default function Tabs({ activeTab, search }: TabsProps) {
-  const [emails, setEmails] = useState<Email[]>(initialEmails);
+  const [emails, setEmails] = useState<Email[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
 
-  // ⭐ Toggle star
-  const toggleStar = (id: number) => {
-    setEmails((prev) =>
-      prev.map((mail) =>
-        mail.id === id ? { ...mail, starred: !mail.starred } : mail
-      )
-    );
-  };
+  // 🔹 Fetch from backend
+  useEffect(() => {
+    async function fetchEmails() {
+      if (!token) {
+        navigate("/");
+        return;
+      }
 
-  // 🔍 Filter emails (tab + search)
+      setLoading(true);
+
+      try {
+        const res = await axios.get(
+          `http://localhost:4000/${activeTab}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setEmails(res.data);
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err)) {
+          if (err.response?.status === 401) {
+            localStorage.removeItem("token");
+            navigate("/");
+          }
+        } else {
+          console.error("Unexpected error", err);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchEmails();
+  }, [activeTab]);
+
+  // 🔍 Client-side search
   const filteredEmails = useMemo(() => {
-    return emails.filter((mail) => {
-      const matchesTab = mail.status === activeTab;
+    const query = search.toLowerCase();
 
-      const query = search.toLowerCase();
-      const matchesSearch =
-        mail.to.toLowerCase().includes(query) ||
-        mail.subject.toLowerCase().includes(query) ||
-        mail.preview.toLowerCase().includes(query);
+    return emails.filter((mail) =>
+      mail.recipient_email.toLowerCase().includes(query) ||
+      mail.subject.toLowerCase().includes(query)
+    );
+  }, [emails, search]);
 
-      return matchesTab && matchesSearch;
-    });
-  }, [emails, activeTab, search]);
+  // ⏳ Loading
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-gray-400">
+        Loading emails...
+      </div>
+    );
+  }
 
   // 📨 Empty state
   if (filteredEmails.length === 0) {
@@ -97,53 +91,48 @@ export default function Tabs({ activeTab, search }: TabsProps) {
 
   return (
     <div className="flex-1 overflow-auto bg-white">
-      {filteredEmails.map((mail) => (
-        <div
-          key={mail.id}
-          onClick={() => navigate(`/mail/${mail.id}`)}
-          className="flex cursor-pointer items-center justify-between border-b px-6 py-4 hover:bg-gray-50"
-        >
-          {/* LEFT */}
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium">To: {mail.to}</p>
+      {filteredEmails.map((mail) => {
+        const time =
+          activeTab === "scheduled"
+            ? mail.scheduled_at
+            : mail.sent_at;
 
-            <div className="flex items-center gap-3 text-sm">
-              {/* 🕒 Time / Status Badge */}
-              {mail.status === "scheduled" ? (
-                <span className="flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-600">
-                  ⏰ {mail.time}
-                </span>
-              ) : (
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                  Sent
-                </span>
-              )}
-
-              {/* Subject */}
-              <span className="font-medium text-gray-800">
-                {mail.subject}
-              </span>
-
-              {/* Preview */}
-              <span className="max-w-[420px] truncate text-gray-400">
-                - {mail.preview}
-              </span>
-            </div>
-          </div>
-
-          {/* RIGHT */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation(); // ⛔ prevent opening mail
-              toggleStar(mail.id);
-            }}
-            className="text-xl transition hover:scale-110"
-            title="Star"
+        return (
+          <div
+            key={mail.id}
+            onClick={() => navigate(`/mail/${mail.id}`)}
+            className="flex cursor-pointer items-center justify-between border-b px-6 py-4 hover:bg-gray-50"
           >
-            {mail.starred ? "⭐" : "☆"}
-          </button>
-        </div>
-      ))}
+            {/* LEFT */}
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-medium">
+                To: {mail.recipient_email}
+              </p>
+
+              <div className="flex items-center gap-3 text-sm">
+                {/* Status badge */}
+                {activeTab === "scheduled" ? (
+                  <span className="flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-600">
+                    ⏰ {time ? new Date(time).toLocaleString() : ""}
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                    Sent
+                  </span>
+                )}
+
+                {/* Subject */}
+                <span className="font-medium text-gray-800">
+                  {mail.subject}
+                </span>
+              </div>
+            </div>
+
+            {/* RIGHT (placeholder star UI) */}
+            <span className="text-xl text-gray-300">☆</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

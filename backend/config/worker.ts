@@ -3,6 +3,8 @@ import IORedis from "ioredis";
 import dotenv from "dotenv";
 import { db } from "./db";
 import { emailQueue } from "./queue";
+import nodemailer from "nodemailer";
+import { createTransporter } from "./mailer";
 
 dotenv.config();
 
@@ -44,11 +46,14 @@ new Worker(
     const emailJob = jobRows[0];
 
     // Idempotency check
-    if (emailJob.status === "sent") {
-      console.log("Already sent, skipping");
+    if (emailJob.status !== "scheduled") {
+      console.log(
+        "Job not in scheduled state, skipping:",
+        emailJob.status
+      );
       return;
     }
-
+    
     // Fetch batch (sender + limit)
     const [batchRows]: any = await db.query(
       "SELECT sender_email, hourly_limit FROM email_batches WHERE id = ?",
@@ -85,7 +90,11 @@ new Worker(
       await emailQueue.add(
       "send-email",
       { emailJobId: emailJob.id },
-      { delay: delayMs }
+      {
+        delay: Math.max(delayMs, 0),
+        attempts: 3,
+        backoff: { type: "exponential", delay: 2000 },
+      }
     );
 
       console.log("Hourly limit hit, rescheduled:", emailJob.id);
@@ -93,18 +102,52 @@ new Worker(
     }
 
     // Mark as processing
-    await db.query(
-      "UPDATE email_jobs SET status = 'processing' WHERE id = ?",
+    const [lockResult]: any = await db.query(
+      `
+      UPDATE email_jobs
+      SET status = 'processing'
+      WHERE id = ? AND status = 'scheduled'
+      `,
       [emailJob.id]
     );
 
-    console.log("Processing email job:", emailJob.id);
+    if (lockResult.affectedRows === 0) {
+      console.log("Could not acquire job lock, skipping");
+      return;
+    }
 
-    // Simulate success (SMTP in Phase 5)
+    // SMTP
+    try {
+    const { transporter } = await createTransporter();
+
+    const info = await transporter.sendMail({
+      from: sender_email,
+      to: emailJob.recipient_email,
+      subject: "Scheduled Email",
+      text: "Hello from Email Scheduler",
+    });
+
+    console.log(
+      "Email sent. Preview URL:",
+      nodemailer.getTestMessageUrl(info)
+    );
+
     await db.query(
       "UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = ?",
       [emailJob.id]
     );
+  } catch (err: any) {
+    const attempts = job.attemptsMade + 1;
+
+    if (attempts >= 3) {
+      await db.query(
+        "UPDATE email_jobs SET status = 'failed', error_message = ? WHERE id = ?",
+        [err.message, emailJob.id]
+      );
+    }
+
+    throw err;
+  }
   },
   {
     connection: redis,

@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Header from "../components/Header";
 import Tabs from "../components/Tabs";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+
 type TabType = "scheduled" | "sent";
+
 interface JwtPayload {
   userId: string;
   email: string;
@@ -14,82 +16,67 @@ interface JwtPayload {
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  // 🔹 Decode user from JWT
-  const token = localStorage.getItem("token");
-  if (!token) {
-    navigate("/");
-  }
+  const token = localStorage.getItem("token")!;
 
-  const user = token ? (jwtDecode(token) as JwtPayload) : null;
+  const user = useMemo(() => {
+    if (!token) return null;
+    return jwtDecode<JwtPayload>(token);
+  }, [token]);
 
   const [activeTab, setActiveTab] = useState<TabType>(() => {
-    const saved = localStorage.getItem("activeTab");
-    return (saved as TabType) || "scheduled";
+    return (localStorage.getItem("activeTab") as TabType) || "scheduled";
   });
 
   const [userProfile, setUserProfile] = useState<{
-  name: string;
-  email: string;
-  avatar_url: string | null;
-} | null>(null);
+    name: string;
+    email: string;
+    avatar_url: string | null;
+  } | null>(null);
 
   const [search, setSearch] = useState("");
-
-  // 🔹 Counts from backend
   const [scheduledCount, setScheduledCount] = useState(0);
   const [sentCount, setSentCount] = useState(0);
 
-  // 🔹 Axios config (LOCAL, no separate file)
-  const api = axios.create({
-    baseURL: "http://localhost:4000",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  // ✅ Persist tab on refresh
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
   }, [activeTab]);
 
   useEffect(() => {
-  async function fetchProfile() {
-    try {
-      const res = await axios.get(
-        "http://localhost:4000/auth/me",
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-      setUserProfile(res.data);
-    } catch (err) {
-      console.error("Failed to fetch profile", err);
+    if (!token) return;
+
+    async function fetchProfile() {
+      try {
+        const res = await axios.get("http://localhost:4000/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUserProfile(res.data);
+      } catch (err) {
+        console.error("Failed to fetch profile", err);
+      }
     }
-  }
 
-  fetchProfile();
-}, []);
+    fetchProfile();
+  }, [token]);
 
-
-  // 🔹 Fetch counts on load
   useEffect(() => {
+    if (!token) return;
+
     async function fetchCounts() {
       try {
         const [scheduledRes, sentRes] = await Promise.all([
-          api.get("/scheduled"),
-          api.get("/sent"),
+          axios.get("http://localhost:4000/scheduled", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get("http://localhost:4000/sent", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         ]);
 
         setScheduledCount(scheduledRes.data.length);
         setSentCount(sentRes.data.length);
-      } catch (err: unknown) {
-        if (axios.isAxiosError(err)) {
-          if (err.response?.status === 401) {
-            localStorage.removeItem("token");
-            navigate("/");
-          }
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          localStorage.removeItem("token");
         } else {
           console.error("Unexpected error", err);
         }
@@ -97,24 +84,19 @@ export default function Dashboard() {
     }
 
     fetchCounts();
-  }, []);
+  }, [token, navigate]);
 
-  // ✅ Refresh handler
-  const handleRefresh = () => {
-    window.location.reload();
-  };
-
-  const handleFilter = () => {
-    alert("Filter feature coming soon 🙂");
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r p-4">
+      <aside className="w-64 bg-white border-r p-4 flex flex-col">
         <h1 className="text-2xl font-bold mb-6">ONG</h1>
 
-        {/* 🔹 User from JWT */}
         <div className="flex items-center gap-3 mb-6 rounded-lg bg-gray-50 p-3">
           <img
             src={
@@ -132,7 +114,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Compose */}
         <button
           onClick={() => navigate("/compose")}
           className="w-full mb-6 rounded-full border border-green-500 text-green-600 py-2 font-medium hover:bg-green-50 transition"
@@ -142,7 +123,6 @@ export default function Dashboard() {
 
         <p className="mb-2 text-xs text-gray-400">CORE</p>
 
-        {/* Scheduled */}
         <button
           onClick={() => setActiveTab("scheduled")}
           className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition ${
@@ -157,7 +137,6 @@ export default function Dashboard() {
           </span>
         </button>
 
-        {/* Sent */}
         <button
           onClick={() => setActiveTab("sent")}
           className={`mt-2 flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition ${
@@ -171,17 +150,22 @@ export default function Dashboard() {
             {sentCount}
           </span>
         </button>
+
+        <button
+          onClick={handleLogout}
+          className="mt-auto w-full rounded-md border border-red-500 text-red-600 py-2 text-sm font-medium hover:bg-red-50 transition"
+        >
+          Logout
+        </button>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 flex flex-col bg-white">
         <Header
           search={search}
           onSearchChange={setSearch}
-          onRefresh={handleRefresh}
-          onFilter={handleFilter}
+          onRefresh={() => window.location.reload()}
+          onFilter={() => alert("Filter feature coming soon 🙂")}
         />
-
         <Tabs activeTab={activeTab} search={search} />
       </main>
     </div>

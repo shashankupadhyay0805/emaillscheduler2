@@ -1,5 +1,6 @@
-import { createContext, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import { AuthContext } from "./AuthContext";
 
 interface JwtPayload {
   userId: string;
@@ -7,46 +8,43 @@ interface JwtPayload {
   exp: number;
 }
 
-interface AuthContextType {
-  user: JwtPayload | null;
-  token: string | null;
-  login: (token: string) => void;
-  logout: () => void;
-}
-
-export const AuthContext = createContext<AuthContextType | null>(null);
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem("token");
-  });
+  const [token, setToken] = useState<string | null>(() =>
+    localStorage.getItem("token")
+  );
 
-  const [user, setUser] = useState<JwtPayload | null>(() => {
-    const storedToken = localStorage.getItem("token");
-    return storedToken ? jwtDecode(storedToken) : null;
-  });
+  const user = useMemo<JwtPayload | null>(() => {
+    if (!token) return null;
+    try {
+      return jwtDecode<JwtPayload>(token);
+    } catch {
+      return null;
+    }
+  }, [token]);
 
   const login = (jwtToken: string) => {
     localStorage.setItem("token", jwtToken);
     setToken(jwtToken);
-    setUser(jwtDecode(jwtToken));
   };
 
   const logout = () => {
     localStorage.removeItem("token");
     setToken(null);
-    setUser(null);
   };
 
-  // Optional: auto-logout on token expiry
   useEffect(() => {
-    if (!user) return;
+  if (!user) return;
 
-    const now = Date.now() / 1000;
-    if (user.exp < now) {
+  const isExpired = user.exp * 1000 <= Date.now();
+
+  if (isExpired) {
+    const id = setTimeout(() => {
       logout();
+    }, 0);
+
+    return () => clearTimeout(id);
     }
-  }, [user]);
+  }, [user?.exp]);
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout }}>

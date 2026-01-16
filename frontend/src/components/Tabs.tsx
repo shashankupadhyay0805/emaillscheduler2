@@ -23,7 +23,6 @@ export default function Tabs({ activeTab, search }: TabsProps) {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
-  // 🔹 Fetch from backend
   useEffect(() => {
     async function fetchEmails() {
       if (!token) {
@@ -61,7 +60,6 @@ export default function Tabs({ activeTab, search }: TabsProps) {
     fetchEmails();
   }, [activeTab]);
 
-  // 🔍 Client-side search
   const filteredEmails = useMemo(() => {
     const query = search.toLowerCase();
 
@@ -71,7 +69,6 @@ export default function Tabs({ activeTab, search }: TabsProps) {
     );
   }, [emails, search]);
 
-  // ⏳ Loading
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center text-gray-400">
@@ -80,7 +77,6 @@ export default function Tabs({ activeTab, search }: TabsProps) {
     );
   }
 
-  // 📨 Empty state
   if (filteredEmails.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center text-gray-400">
@@ -103,7 +99,6 @@ export default function Tabs({ activeTab, search }: TabsProps) {
             onClick={() => navigate(`/mail/${mail.id}`)}
             className="flex cursor-pointer items-center justify-between border-b px-6 py-4 hover:bg-gray-50"
           >
-            {/* LEFT */}
             <div className="flex flex-col gap-1">
               <p className="text-sm font-medium">
                 To: {mail.recipient_email}
@@ -121,14 +116,12 @@ export default function Tabs({ activeTab, search }: TabsProps) {
                   </span>
                 )}
 
-                {/* Subject */}
                 <span className="font-medium text-gray-800">
                   {mail.subject}
                 </span>
               </div>
             </div>
 
-            {/* RIGHT (placeholder star UI) */}
             <span className="text-xl text-gray-300">☆</span>
           </div>
         );

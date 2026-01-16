@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios"; // 🔹 NEW
+import axios from "axios";
 
 export default function Compose() {
   const navigate = useNavigate();
@@ -14,27 +14,23 @@ export default function Compose() {
 
   const token = localStorage.getItem("token");
 
-  // 📎 Attachment (UI only for now)
   const handleAttach = (file: File | null) => {
     if (!file) return;
     setAttachment(file);
     alert(`Attached: ${file.name}`);
   };
 
-  // ❌ Presets now set actual datetime
   const selectPreset = (hoursFromNow: number) => {
     const date = new Date();
     date.setHours(date.getHours() + hoursFromNow);
     setScheduledTime(date.toISOString());
   };
 
-  // ❌ Cancel scheduling
   const cancelSchedule = () => {
     setScheduledTime(null);
     setShowScheduler(false);
   };
 
-  // ✉️ SEND / SCHEDULE EMAIL (REAL)
   const handleSend = async () => {
     if (!to || !subject || !body) {
       alert("Please fill all fields");
@@ -56,7 +52,7 @@ export default function Compose() {
       await axios.post(
         "http://localhost:4000/schedule",
         {
-          senderEmail: "no-reply@ong.app", // later dynamic
+          senderEmail: "no-reply@ong.app",
           subject,
           body,
           startTime: scheduledTime ?? new Date().toISOString(),
@@ -99,7 +95,6 @@ export default function Compose() {
           </div>
 
           <div className="flex items-center gap-5">
-            {/* 📎 Attach */}
             <label className="cursor-pointer text-xl hover:text-green-600">
               📎
               <input
@@ -111,7 +106,6 @@ export default function Compose() {
               />
             </label>
 
-            {/* ⏰ Schedule */}
             <button
               onClick={() => setShowScheduler((p) => !p)}
               className="text-xl hover:text-green-600"
@@ -119,7 +113,6 @@ export default function Compose() {
               ⏰
             </button>
 
-            {/* 🚀 Send */}
             <button
               onClick={handleSend}
               className="rounded-full border border-green-500 px-5 py-1 font-medium text-green-600 hover:bg-green-50"
@@ -131,7 +124,6 @@ export default function Compose() {
 
         {/* Form */}
         <div className="flex flex-1 gap-8 p-8">
-          {/* Left */}
           <div className="flex flex-1 flex-col gap-5">
             <div className="flex gap-4">
               <span className="w-16 text-gray-500">From</span>

@@ -1,19 +1,8 @@
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-
 export default function Login() {
-  const navigate = useNavigate();
 
   const loginWithGoogle = () => {
     window.location.href = "http://localhost:4000/auth/google";
   };
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      navigate("/dashboard");
-    }
-  }, [navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -48,28 +37,24 @@ export default function Login() {
             Login with Google
           </button>
 
-        {/* Divider */}
         <div className="my-4 flex items-center gap-3">
           <div className="h-px flex-1 bg-gray-200" />
           <p className="text-xs text-gray-400">or sign up through email</p>
           <div className="h-px flex-1 bg-gray-200" />
         </div>
 
-        {/* Email Input */}
         <input
           type="email"
           placeholder="Email ID"
           className="mb-3 w-full rounded-md bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-green-400"
         />
 
-        {/* Password Input */}
         <input
           type="password"
           placeholder="Password"
           className="mb-5 w-full rounded-md bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-green-400"
         />
 
-        {/* Login Button */}
         <button
           className="w-full rounded-md bg-green-500 py-3 text-sm font-semibold text-white transition hover:bg-green-600"
           onClick={() => alert("Email login UI only")}

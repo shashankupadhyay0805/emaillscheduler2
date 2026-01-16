@@ -13,7 +13,6 @@ export default function MailHeader({ name, email }: MailHeaderProps) {
         {firstLetter}
       </div>
 
-      {/* Sender Info */}
       <div className="flex flex-col">
         <div className="flex items-center gap-2">
           <p className="text-base font-semibold text-gray-900">

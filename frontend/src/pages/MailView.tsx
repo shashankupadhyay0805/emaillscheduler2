@@ -18,7 +18,7 @@ export default function MailView() {
 
   const [mail, setMail] = useState<Mail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isStarred, setIsStarred] = useState(false); // UI-only
+  const [isStarred, setIsStarred] = useState(false);
 
   const token = localStorage.getItem("token");
 
@@ -67,7 +67,6 @@ export default function MailView() {
 
   return (
     <div className="flex h-screen flex-col bg-white">
-      {/* 🔝 Top Header */}
       <div className="flex items-center justify-between border-b px-6 py-4">
         <div className="flex items-center gap-4">
           <button
@@ -83,7 +82,6 @@ export default function MailView() {
         </div>
 
         <div className="flex items-center gap-5">
-          {/* ⭐ Star (UI only) */}
           <button
             onClick={() => setIsStarred((p) => !p)}
             className={`text-2xl ${
@@ -95,7 +93,6 @@ export default function MailView() {
             {isStarred ? "⭐" : "☆"}
           </button>
 
-          {/* 🗑️ Delete (UI only) */}
           <button
             onClick={() => {
               alert("Delete coming soon");
@@ -108,9 +105,7 @@ export default function MailView() {
         </div>
       </div>
 
-      {/* ✉️ Mail Content */}
       <div className="flex-1 overflow-auto px-10 py-8">
-        {/* Sender Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500 text-lg font-semibold text-white">
@@ -132,7 +127,6 @@ export default function MailView() {
           </p>
         </div>
 
-        {/* Body */}
         <div className="max-w-4xl whitespace-pre-line text-gray-700 leading-relaxed">
           {mail.body}
         </div>

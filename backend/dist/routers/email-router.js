@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const email_controller_1 = require("../controllers/email-controller");
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
+router.post("/schedule", auth_1.requireAuth, email_controller_1.scheduleEmails);
+router.get("/scheduled", auth_1.requireAuth, email_controller_1.getScheduledEmails);
+router.get("/sent", auth_1.requireAuth, email_controller_1.getSentEmails);
+router.get("/:id", auth_1.requireAuth, email_controller_1.getEmailById);
+exports.default = router;

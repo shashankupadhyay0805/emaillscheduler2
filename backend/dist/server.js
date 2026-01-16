@@ -11,8 +11,8 @@ const db_1 = require("./config/db");
 const passport_1 = __importDefault(require("./config/passport"));
 const login_router_1 = __importDefault(require("./routers/login-router"));
 dotenv_1.default.config();
-const app = express_1.default();
-app.use(cors_1.default());
+const app = (0, express_1.default)();
+app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.get("/", async (_req, res) => {
     const [rows] = await db_1.db.query("SELECT 'API running' AS msg");

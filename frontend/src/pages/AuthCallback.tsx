@@ -19,7 +19,7 @@ export default function AuthCallback() {
     })
       .then(res => res.json())
       .then(user => {
-        auth.login(user, token); // ✅ FIXED
+        auth.login(user, token);
         navigate("/dashboard");
       });
   }, [auth, navigate]);

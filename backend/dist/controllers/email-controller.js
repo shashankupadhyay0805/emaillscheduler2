@@ -8,7 +8,7 @@ const crypto_1 = require("crypto");
 const db_1 = require("../config/db");
 const queue_1 = require("../config/queue");
 /**
- * POST /emails/schedule
+ * POST /schedule
  */
 async function scheduleEmails(req, res) {
     try {
@@ -61,7 +61,7 @@ async function scheduleEmails(req, res) {
     }
 }
 /**
- * GET /emails/scheduled
+ * GET /scheduled
  */
 async function getScheduledEmails(req, res) {
     try {
@@ -87,7 +87,7 @@ async function getScheduledEmails(req, res) {
     }
 }
 /**
- * GET /emails/sent
+ * GET /sent
  */
 async function getSentEmails(req, res) {
     try {
@@ -113,7 +113,7 @@ async function getSentEmails(req, res) {
     }
 }
 /**
- * GET /emails/:id
+ * GET /:id
  */
 async function getEmailById(req, res) {
     const userId = req.user.userId;

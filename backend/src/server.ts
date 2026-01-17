@@ -32,7 +32,14 @@ app.use("/emails", emailRoutes);
 app.use("/auth", authRoutes);
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  startWorker();
-})
+app.listen(PORT, async () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  if (process.env.RUN_WORKER === "true") {
+    try {
+      await db.query("SELECT 1");
+      startWorker();
+    } catch (err) {
+      console.error("❌ Worker not started — DB unavailable");
+    }
+  }
+});

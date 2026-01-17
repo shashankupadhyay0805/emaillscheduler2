@@ -6,17 +6,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireAuth = requireAuth;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 function requireAuth(req, res, next) {
-    const header = req.headers.authorization;
-    if (!header) {
-        return res.status(401).json({ error: "No token" });
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ error: "Missing token" });
     }
-    const token = header.split(" ")[1];
+    const token = authHeader.split(" ")[1];
     try {
-        const payload = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-        req.user = payload;
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
         next();
     }
     catch {
-        res.status(401).json({ error: "Invalid token" });
+        return res.status(401).json({ error: "Invalid token" });
     }
 }

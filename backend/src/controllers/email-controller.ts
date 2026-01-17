@@ -4,7 +4,7 @@ import { db } from "../config/db";
 import { emailQueue } from "../config/queue";
 
 /**
- * POST /emails/schedule
+ * POST /schedule
  */
 export async function scheduleEmails(req: Request, res: Response) {
   try {
@@ -90,7 +90,7 @@ export async function scheduleEmails(req: Request, res: Response) {
 }
 
 /**
- * GET /emails/scheduled
+ * GET /scheduled
  */
 export async function getScheduledEmails(req: Request, res: Response) {
   try {
@@ -121,7 +121,7 @@ export async function getScheduledEmails(req: Request, res: Response) {
 }
 
 /**
- * GET /emails/sent
+ * GET /sent
  */
 export async function getSentEmails(req: Request, res: Response) {
   try {
@@ -152,7 +152,7 @@ export async function getSentEmails(req: Request, res: Response) {
 }
 
 /**
- * GET /emails/:id
+ * GET /:id
  */
 export async function getEmailById(req: Request, res: Response) {
   const userId = (req as any).user.userId;

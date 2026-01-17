@@ -64,10 +64,10 @@ export default function Dashboard() {
     async function fetchCounts() {
       try {
         const [scheduledRes, sentRes] = await Promise.all([
-          axios.get("https://emaillscheduler2.onrender.com/scheduled", {
+          axios.get("https://emaillscheduler2.onrender.com/emails/scheduled", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get("https://emaillscheduler2.onrender.com/sent", {
+          axios.get("https://emaillscheduler2.onrender.com/emails/sent", {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);

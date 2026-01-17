@@ -41,7 +41,7 @@ var crypto_1 = require("crypto");
 var db_1 = require("../config/db");
 var queue_1 = require("../config/queue");
 /**
- * POST /emails/schedule
+ * POST /schedule
  */
 function scheduleEmails(req, res) {
     return __awaiter(this, void 0, void 0, function () {
@@ -109,7 +109,7 @@ function scheduleEmails(req, res) {
 }
 exports.scheduleEmails = scheduleEmails;
 /**
- * GET /emails/scheduled
+ * GET /scheduled
  */
 function getScheduledEmails(req, res) {
     return __awaiter(this, void 0, void 0, function () {
@@ -136,7 +136,7 @@ function getScheduledEmails(req, res) {
 }
 exports.getScheduledEmails = getScheduledEmails;
 /**
- * GET /emails/sent
+ * GET /sent
  */
 function getSentEmails(req, res) {
     return __awaiter(this, void 0, void 0, function () {
@@ -163,7 +163,7 @@ function getSentEmails(req, res) {
 }
 exports.getSentEmails = getSentEmails;
 /**
- * GET /emails/:id
+ * GET /:id
  */
 function getEmailById(req, res) {
     return __awaiter(this, void 0, void 0, function () {

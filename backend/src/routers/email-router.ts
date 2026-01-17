@@ -1,10 +1,5 @@
 import { Router } from "express";
-import {
-  scheduleEmails,
-  getScheduledEmails,
-  getSentEmails,
-  getEmailById,
-} from "../controllers/email-controller";
+import { scheduleEmails, getScheduledEmails, getSentEmails, getEmailById } from "../controllers/email-controller";
 import { requireAuth } from "../middleware/auth";
 
 const router = Router();

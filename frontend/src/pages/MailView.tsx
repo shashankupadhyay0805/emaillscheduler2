@@ -31,7 +31,7 @@ export default function MailView() {
 
       try {
         const res = await axios.get(
-          `https://emaillscheduler2.onrender.com/${id}`,
+          `https://emaillscheduler2.onrender.com/emails/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
+exports.startWorker = void 0;
 var bullmq_1 = require("bullmq");
 var ioredis_1 = require("ioredis");
 var dotenv_1 = require("dotenv");
@@ -44,9 +45,6 @@ var queue_1 = require("./queue");
 var nodemailer_1 = require("nodemailer");
 var mailer_1 = require("./mailer");
 dotenv_1["default"].config();
-var redis = new ioredis_1["default"](process.env.REDIS_URL, {
-    maxRetriesPerRequest: null
-});
 function getHourKey(senderEmail, date) {
     var yyyy = date.getFullYear();
     var mm = String(date.getMonth() + 1).padStart(2, "0");
@@ -60,88 +58,96 @@ function startOfNextHour(date) {
     d.setHours(d.getHours() + 1);
     return d;
 }
-new bullmq_1.Worker("email-queue", function (job) { return __awaiter(void 0, void 0, void 0, function () {
-    var emailJobId, jobRows, emailJob, batchRows, _a, sender_email, hourly_limit, now, hourKey, currentCount, nextRun, delayMs, lockResult, info, err_1;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
-            case 0:
-                emailJobId = job.data.emailJobId;
-                return [4 /*yield*/, db_1.db.query("SELECT * FROM email_jobs WHERE id = $1", [emailJobId])];
-            case 1:
-                jobRows = (_b.sent()).rows;
-                if (jobRows.length === 0) {
-                    console.log("Email job not found, skipping");
-                    return [2 /*return*/];
-                }
-                emailJob = jobRows[0];
-                // 2️⃣ Idempotency check
-                if (emailJob.status !== "scheduled") {
-                    console.log("Job not scheduled, skipping:", emailJob.status);
-                    return [2 /*return*/];
-                }
-                return [4 /*yield*/, db_1.db.query("SELECT sender_email, hourly_limit FROM email_batches WHERE id = $1", [emailJob.batch_id])];
-            case 2:
-                batchRows = (_b.sent()).rows;
-                if (batchRows.length === 0) {
-                    console.log("Batch not found, skipping");
-                    return [2 /*return*/];
-                }
-                _a = batchRows[0], sender_email = _a.sender_email, hourly_limit = _a.hourly_limit;
-                now = new Date();
-                hourKey = getHourKey(sender_email, now);
-                return [4 /*yield*/, redis.incr(hourKey)];
-            case 3:
-                currentCount = _b.sent();
-                if (!(currentCount === 1)) return [3 /*break*/, 5];
-                return [4 /*yield*/, redis.expire(hourKey, 3600)];
-            case 4:
-                _b.sent();
-                _b.label = 5;
-            case 5:
-                if (!(currentCount > hourly_limit)) return [3 /*break*/, 8];
-                nextRun = startOfNextHour(now);
-                delayMs = nextRun.getTime() - Date.now();
-                return [4 /*yield*/, db_1.db.query("UPDATE email_jobs SET scheduled_at = $1 WHERE id = $2", [nextRun, emailJob.id])];
-            case 6:
-                _b.sent();
-                return [4 /*yield*/, queue_1.emailQueue.add("send-email", { emailJobId: emailJob.id }, { delay: Math.max(delayMs, 0) })];
-            case 7:
-                _b.sent();
-                console.log("Hourly limit hit, rescheduled:", emailJob.id);
-                return [2 /*return*/];
-            case 8: return [4 /*yield*/, db_1.db.query("\n      UPDATE email_jobs\n      SET status = 'processing'\n      WHERE id = $1 AND status = 'scheduled'\n      ", [emailJob.id])];
-            case 9:
-                lockResult = _b.sent();
-                if (lockResult.rowCount === 0) {
-                    console.log("Could not acquire lock, skipping");
-                    return [2 /*return*/];
-                }
-                _b.label = 10;
-            case 10:
-                _b.trys.push([10, 13, , 15]);
-                return [4 /*yield*/, mailer_1.transporter.sendMail({
-                        from: sender_email,
-                        to: emailJob.recipient_email,
-                        subject: "Scheduled Email",
-                        text: "Hello from Email Scheduler"
-                    })];
-            case 11:
-                info = _b.sent();
-                console.log("Email sent. Preview URL:", nodemailer_1["default"].getTestMessageUrl(info));
-                return [4 /*yield*/, db_1.db.query("UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = $1", [emailJob.id])];
-            case 12:
-                _b.sent();
-                return [3 /*break*/, 15];
-            case 13:
-                err_1 = _b.sent();
-                return [4 /*yield*/, db_1.db.query("UPDATE email_jobs SET status = 'failed', error_message = $1 WHERE id = $2", [err_1.message, emailJob.id])];
-            case 14:
-                _b.sent();
-                throw err_1;
-            case 15: return [2 /*return*/];
-        }
+function startWorker() {
+    var _this = this;
+    var redis = new ioredis_1["default"](process.env.REDIS_URL, {
+        maxRetriesPerRequest: null
     });
-}); }, {
-    connection: redis,
-    concurrency: 5
-});
+    var worker = new bullmq_1.Worker("email-queue", function (job) { return __awaiter(_this, void 0, void 0, function () {
+        var emailJobId, jobRows, emailJob, batchRows, _a, sender_email, hourly_limit, now, hourKey, currentCount, nextRun, delayMs, lock, info, err_1;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    emailJobId = job.data.emailJobId;
+                    console.log("👷 Processing job:", emailJobId);
+                    return [4 /*yield*/, db_1.db.query("SELECT * FROM email_jobs WHERE id = $1", [emailJobId])];
+                case 1:
+                    jobRows = (_b.sent()).rows;
+                    if (jobRows.length === 0)
+                        return [2 /*return*/];
+                    emailJob = jobRows[0];
+                    // Idempotency
+                    if (emailJob.status !== "scheduled") {
+                        console.log("Skipping job, status:", emailJob.status);
+                        return [2 /*return*/];
+                    }
+                    return [4 /*yield*/, db_1.db.query("SELECT sender_email, hourly_limit FROM email_batches WHERE id = $1", [emailJob.batch_id])];
+                case 2:
+                    batchRows = (_b.sent()).rows;
+                    if (batchRows.length === 0)
+                        return [2 /*return*/];
+                    _a = batchRows[0], sender_email = _a.sender_email, hourly_limit = _a.hourly_limit;
+                    now = new Date();
+                    hourKey = getHourKey(sender_email, now);
+                    return [4 /*yield*/, redis.incr(hourKey)];
+                case 3:
+                    currentCount = _b.sent();
+                    if (!(currentCount === 1)) return [3 /*break*/, 5];
+                    return [4 /*yield*/, redis.expire(hourKey, 3600)];
+                case 4:
+                    _b.sent();
+                    _b.label = 5;
+                case 5:
+                    if (!(currentCount > hourly_limit)) return [3 /*break*/, 8];
+                    nextRun = startOfNextHour(now);
+                    delayMs = nextRun.getTime() - Date.now();
+                    return [4 /*yield*/, db_1.db.query("UPDATE email_jobs SET scheduled_at = $1 WHERE id = $2", [nextRun, emailJob.id])];
+                case 6:
+                    _b.sent();
+                    return [4 /*yield*/, queue_1.emailQueue.add("send-email", { emailJobId: emailJob.id }, { delay: Math.max(delayMs, 0) })];
+                case 7:
+                    _b.sent();
+                    console.log("⏳ Hourly limit hit, rescheduled:", emailJob.id);
+                    return [2 /*return*/];
+                case 8: return [4 /*yield*/, db_1.db.query("\n        UPDATE email_jobs\n        SET status = 'processing'\n        WHERE id = $1 AND status = 'scheduled'\n        ", [emailJob.id])];
+                case 9:
+                    lock = _b.sent();
+                    if (lock.rowCount === 0) {
+                        console.log("⚠️ Lock not acquired, skipping:", emailJob.id);
+                        return [2 /*return*/];
+                    }
+                    _b.label = 10;
+                case 10:
+                    _b.trys.push([10, 13, , 15]);
+                    return [4 /*yield*/, mailer_1.transporter.sendMail({
+                            from: sender_email,
+                            to: emailJob.recipient_email,
+                            subject: "Scheduled Email",
+                            text: "Hello from Email Scheduler"
+                        })];
+                case 11:
+                    info = _b.sent();
+                    console.log("✅ Email sent. Preview:", nodemailer_1["default"].getTestMessageUrl(info));
+                    return [4 /*yield*/, db_1.db.query("UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = $1", [emailJob.id])];
+                case 12:
+                    _b.sent();
+                    return [3 /*break*/, 15];
+                case 13:
+                    err_1 = _b.sent();
+                    return [4 /*yield*/, db_1.db.query("\n          UPDATE email_jobs\n          SET status = 'failed', error_message = $1\n          WHERE id = $2\n          ", [err_1.message, emailJob.id])];
+                case 14:
+                    _b.sent();
+                    throw err_1;
+                case 15: return [2 /*return*/];
+            }
+        });
+    }); }, {
+        connection: redis,
+        concurrency: 5
+    });
+    worker.on("failed", function (job, err) {
+        console.error("❌ Job failed:", job === null || job === void 0 ? void 0 : job.id, err.message);
+    });
+    console.log("🚀 BullMQ worker started");
+}
+exports.startWorker = startWorker;

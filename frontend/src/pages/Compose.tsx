@@ -50,7 +50,7 @@ export default function Compose() {
 
     try {
       await axios.post(
-        "https://emaillscheduler2.onrender.com/schedule",
+        "https://emaillscheduler2.onrender.com/emails/schedule",
         {
           senderEmail: "no-reply@ong.app",
           subject,

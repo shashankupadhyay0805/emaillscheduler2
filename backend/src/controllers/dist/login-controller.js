@@ -51,7 +51,7 @@ exports.googleCallbackController = function (req, res) {
         userId: user.id,
         email: user.email
     }, process.env.JWT_SECRET, { expiresIn: "7d" });
-    return res.redirect("https://emaillscheduler2.vercel.app/auth/callback?token=" + token);
+    return res.redirect("http://localhost:5173/auth/callback?token=" + token);
 };
 /**
  * GET /auth/me

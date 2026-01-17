@@ -1,28 +1,20 @@
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 
-export function requireAuth(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  const header = req.headers.authorization;
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
 
-  if (!header) {
-    return res.status(401).json({ error: "No token" });
+  if (!authHeader) {
+    return res.status(401).json({ error: "Missing token" });
   }
 
-  const token = header.split(" ")[1];
+  const token = authHeader.split(" ")[1];
 
   try {
-    const payload = jwt.verify(
-      token,
-      process.env.JWT_SECRET!
-    ) as any;
-
-    (req as any).user = payload;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    (req as any).user = decoded;
     next();
   } catch {
-    res.status(401).json({ error: "Invalid token" });
+    return res.status(401).json({ error: "Invalid token" });
   }
 }

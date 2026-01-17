@@ -23,7 +23,7 @@ export const googleCallbackController = (req: Request, res: Response) => {
   );
 
   return res.redirect(
-    `http://localhost:5173/auth/callback?token=${token}`
+    `https://emaillscheduler2.vercel.app/auth/callback?token=${token}`
   );
 };
 

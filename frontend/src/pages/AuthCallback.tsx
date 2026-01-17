@@ -12,7 +12,7 @@ export default function AuthCallback() {
 
     if (!token || !auth) return;
 
-    fetch("http://localhost:4000/auth/me", {
+    fetch("https://emaillscheduler2.onrender.com/auth/me", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

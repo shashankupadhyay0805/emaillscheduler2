@@ -20,7 +20,8 @@ passport_1.default.use(new passport_google_oauth20_1.Strategy({
         }
         const name = profile.displayName;
         const avatar = profile.photos?.[0]?.value;
-        const [rows] = await db_1.db.query("SELECT * FROM users WHERE google_id = ?", [googleId]);
+        // 1️⃣ Check existing user
+        const { rows } = await db_1.db.query("SELECT * FROM users WHERE google_id = $1", [googleId]);
         let user;
         if (rows.length === 0) {
             user = {
@@ -30,8 +31,10 @@ passport_1.default.use(new passport_google_oauth20_1.Strategy({
                 email,
                 avatar_url: avatar,
             };
-            await db_1.db.query(`INSERT INTO users (id, google_id, name, email, avatar_url)
-             VALUES (?, ?, ?, ?, ?)`, [
+            await db_1.db.query(`
+            INSERT INTO users (id, google_id, name, email, avatar_url)
+            VALUES ($1, $2, $3, $4, $5)
+            `, [
                 user.id,
                 user.google_id,
                 user.name,

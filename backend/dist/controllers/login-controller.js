@@ -22,9 +22,12 @@ const googleCallbackController = (req, res) => {
     return res.redirect(`http://localhost:5173/auth/callback?token=${token}`);
 };
 exports.googleCallbackController = googleCallbackController;
+/**
+ * GET /auth/me
+ */
 async function getMe(req, res) {
     const userId = req.user.userId;
-    const [rows] = await db_1.db.query("SELECT id, name, email, avatar_url FROM users WHERE id = ?", [userId]);
+    const { rows } = await db_1.db.query("SELECT id, name, email, avatar_url FROM users WHERE id = $1", [userId]);
     if (rows.length === 0) {
         return res.status(404).json({ error: "User not found" });
     }

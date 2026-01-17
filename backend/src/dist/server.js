@@ -43,10 +43,12 @@ var email_router_1 = require("./routers/email-router");
 var db_1 = require("./config/db");
 var passport_1 = require("./config/passport");
 var login_router_1 = require("./routers/login-router");
+require("./config/worker");
 dotenv_1["default"].config();
 var app = express_1["default"]();
 app.use(cors_1["default"]());
 app.use(express_1["default"].json());
+app.use(passport_1["default"].initialize());
 app.get("/", function (_req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var rows;
     return __generator(this, function (_a) {
@@ -60,7 +62,6 @@ app.get("/", function (_req, res) { return __awaiter(void 0, void 0, void 0, fun
     });
 }); });
 app.use(email_router_1["default"]);
-app.use(passport_1["default"].initialize());
 app.use("/auth", login_router_1["default"]);
 var PORT = process.env.PORT || 4000;
 app.listen(PORT, function () {

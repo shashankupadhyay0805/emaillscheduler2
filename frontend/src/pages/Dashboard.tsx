@@ -46,7 +46,7 @@ export default function Dashboard() {
 
     async function fetchProfile() {
       try {
-        const res = await axios.get("http://localhost:4000/auth/me", {
+        const res = await axios.get("https://emaillscheduler2.onrender.com/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUserProfile(res.data);
@@ -64,10 +64,10 @@ export default function Dashboard() {
     async function fetchCounts() {
       try {
         const [scheduledRes, sentRes] = await Promise.all([
-          axios.get("http://localhost:4000/scheduled", {
+          axios.get("https://emaillscheduler2.onrender.com/scheduled", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get("http://localhost:4000/sent", {
+          axios.get("https://emaillscheduler2.onrender.com/sent", {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);

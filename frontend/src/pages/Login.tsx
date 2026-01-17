@@ -1,7 +1,7 @@
 export default function Login() {
 
   const loginWithGoogle = () => {
-    window.location.href = "http://localhost:4000/auth/google";
+    window.location.href = "https://emaillscheduler2.onrender.com/auth/google";
   };
 
   return (

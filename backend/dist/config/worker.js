@@ -29,26 +29,26 @@ function startOfNextHour(date) {
 }
 new bullmq_1.Worker("email-queue", async (job) => {
     const { emailJobId } = job.data;
-    // Fetch email job
-    const [jobRows] = await db_1.db.query("SELECT * FROM email_jobs WHERE id = ?", [emailJobId]);
+    // 1️⃣ Fetch email job
+    const { rows: jobRows } = await db_1.db.query("SELECT * FROM email_jobs WHERE id = $1", [emailJobId]);
     if (jobRows.length === 0) {
         console.log("Email job not found, skipping");
         return;
     }
     const emailJob = jobRows[0];
-    // Idempotency check
+    // 2️⃣ Idempotency check
     if (emailJob.status !== "scheduled") {
-        console.log("Job not in scheduled state, skipping:", emailJob.status);
+        console.log("Job not scheduled, skipping:", emailJob.status);
         return;
     }
-    // Fetch batch (sender + limit)
-    const [batchRows] = await db_1.db.query("SELECT sender_email, hourly_limit FROM email_batches WHERE id = ?", [emailJob.batch_id]);
+    // 3️⃣ Fetch batch info
+    const { rows: batchRows } = await db_1.db.query("SELECT sender_email, hourly_limit FROM email_batches WHERE id = $1", [emailJob.batch_id]);
     if (batchRows.length === 0) {
         console.log("Batch not found, skipping");
         return;
     }
     const { sender_email, hourly_limit } = batchRows[0];
-    // Rate limiting
+    // 4️⃣ Rate limiting
     const now = new Date();
     const hourKey = getHourKey(sender_email, now);
     const currentCount = await redis.incr(hourKey);
@@ -58,28 +58,22 @@ new bullmq_1.Worker("email-queue", async (job) => {
     if (currentCount > hourly_limit) {
         const nextRun = startOfNextHour(now);
         const delayMs = nextRun.getTime() - Date.now();
-        // Update DB
-        await db_1.db.query("UPDATE email_jobs SET scheduled_at = ?, status = 'scheduled' WHERE id = ?", [nextRun, emailJob.id]);
-        // Requeue job
-        await queue_1.emailQueue.add("send-email", { emailJobId: emailJob.id }, {
-            delay: Math.max(delayMs, 0),
-            attempts: 3,
-            backoff: { type: "exponential", delay: 2000 },
-        });
+        await db_1.db.query("UPDATE email_jobs SET scheduled_at = $1 WHERE id = $2", [nextRun, emailJob.id]);
+        await queue_1.emailQueue.add("send-email", { emailJobId: emailJob.id }, { delay: Math.max(delayMs, 0) });
         console.log("Hourly limit hit, rescheduled:", emailJob.id);
         return;
     }
-    // Mark as processing
-    const [lockResult] = await db_1.db.query(`
+    // 5️⃣ Atomic lock (CRITICAL)
+    const lockResult = await db_1.db.query(`
       UPDATE email_jobs
       SET status = 'processing'
-      WHERE id = ? AND status = 'scheduled'
+      WHERE id = $1 AND status = 'scheduled'
       `, [emailJob.id]);
-    if (lockResult.affectedRows === 0) {
-        console.log("Could not acquire job lock, skipping");
+    if (lockResult.rowCount === 0) {
+        console.log("Could not acquire lock, skipping");
         return;
     }
-    // SMTP
+    // 6️⃣ Send email
     try {
         const info = await mailer_1.transporter.sendMail({
             from: sender_email,
@@ -88,13 +82,10 @@ new bullmq_1.Worker("email-queue", async (job) => {
             text: "Hello from Email Scheduler",
         });
         console.log("Email sent. Preview URL:", nodemailer_1.default.getTestMessageUrl(info));
-        await db_1.db.query("UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = ?", [emailJob.id]);
+        await db_1.db.query("UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = $1", [emailJob.id]);
     }
     catch (err) {
-        const attempts = job.attemptsMade + 1;
-        if (attempts >= 3) {
-            await db_1.db.query("UPDATE email_jobs SET status = 'failed', error_message = ? WHERE id = ?", [err.message, emailJob.id]);
-        }
+        await db_1.db.query("UPDATE email_jobs SET status = 'failed', error_message = $1 WHERE id = $2", [err.message, emailJob.id]);
         throw err;
     }
 }, {

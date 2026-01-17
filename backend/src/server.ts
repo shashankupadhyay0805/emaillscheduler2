@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", async (_req, res) => {
-  const [rows] = await db.query("SELECT 'API running' AS msg");
+  const { rows } = await db.query("SELECT 'API running' AS msg");
   res.json(rows);
 });
 

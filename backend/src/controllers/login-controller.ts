@@ -23,15 +23,18 @@ export const googleCallbackController = (req: Request, res: Response) => {
   );
 
   return res.redirect(
-  `http://localhost:5173/auth/callback?token=${token}`
-);
+    `http://localhost:5173/auth/callback?token=${token}`
+  );
 };
 
+/**
+ * GET /auth/me
+ */
 export async function getMe(req: Request, res: Response) {
   const userId = (req as any).user.userId;
 
-  const [rows]: any = await db.query(
-    "SELECT id, name, email, avatar_url FROM users WHERE id = ?",
+  const { rows } = await db.query(
+    "SELECT id, name, email, avatar_url FROM users WHERE id = $1",
     [userId]
   );
 

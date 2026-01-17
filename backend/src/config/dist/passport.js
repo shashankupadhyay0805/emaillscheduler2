@@ -58,9 +58,9 @@ passport_1["default"].use(new passport_google_oauth20_1.Strategy({
                 }
                 name = profile.displayName;
                 avatar = (_d = (_c = profile.photos) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.value;
-                return [4 /*yield*/, db_1.db.query("SELECT * FROM users WHERE google_id = ?", [googleId])];
+                return [4 /*yield*/, db_1.db.query("SELECT * FROM users WHERE google_id = $1", [googleId])];
             case 1:
-                rows = (_e.sent())[0];
+                rows = (_e.sent()).rows;
                 user = void 0;
                 if (!(rows.length === 0)) return [3 /*break*/, 3];
                 user = {
@@ -70,7 +70,7 @@ passport_1["default"].use(new passport_google_oauth20_1.Strategy({
                     email: email,
                     avatar_url: avatar
                 };
-                return [4 /*yield*/, db_1.db.query("INSERT INTO users (id, google_id, name, email, avatar_url)\n             VALUES (?, ?, ?, ?, ?)", [
+                return [4 /*yield*/, db_1.db.query("\n            INSERT INTO users (id, google_id, name, email, avatar_url)\n            VALUES ($1, $2, $3, $4, $5)\n            ", [
                         user.id,
                         user.google_id,
                         user.name,

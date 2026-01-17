@@ -32,9 +32,9 @@ new Worker(
   async job => {
     const { emailJobId } = job.data;
 
-    // Fetch email job
-    const [jobRows]: any = await db.query(
-      "SELECT * FROM email_jobs WHERE id = ?",
+    // 1️⃣ Fetch email job
+    const { rows: jobRows } = await db.query(
+      "SELECT * FROM email_jobs WHERE id = $1",
       [emailJobId]
     );
 
@@ -45,18 +45,15 @@ new Worker(
 
     const emailJob = jobRows[0];
 
-    // Idempotency check
+    // 2️⃣ Idempotency check
     if (emailJob.status !== "scheduled") {
-      console.log(
-        "Job not in scheduled state, skipping:",
-        emailJob.status
-      );
+      console.log("Job not scheduled, skipping:", emailJob.status);
       return;
     }
-    
-    // Fetch batch (sender + limit)
-    const [batchRows]: any = await db.query(
-      "SELECT sender_email, hourly_limit FROM email_batches WHERE id = ?",
+
+    // 3️⃣ Fetch batch info
+    const { rows: batchRows } = await db.query(
+      "SELECT sender_email, hourly_limit FROM email_batches WHERE id = $1",
       [emailJob.batch_id]
     );
 
@@ -67,7 +64,7 @@ new Worker(
 
     const { sender_email, hourly_limit } = batchRows[0];
 
-    // Rate limiting
+    // 4️⃣ Rate limiting
     const now = new Date();
     const hourKey = getHourKey(sender_email, now);
 
@@ -80,72 +77,61 @@ new Worker(
       const nextRun = startOfNextHour(now);
       const delayMs = nextRun.getTime() - Date.now();
 
-      // Update DB
       await db.query(
-        "UPDATE email_jobs SET scheduled_at = ?, status = 'scheduled' WHERE id = ?",
+        "UPDATE email_jobs SET scheduled_at = $1 WHERE id = $2",
         [nextRun, emailJob.id]
       );
 
-      // Requeue job
       await emailQueue.add(
-      "send-email",
-      { emailJobId: emailJob.id },
-      {
-        delay: Math.max(delayMs, 0),
-        attempts: 3,
-        backoff: { type: "exponential", delay: 2000 },
-      }
-    );
+        "send-email",
+        { emailJobId: emailJob.id },
+        { delay: Math.max(delayMs, 0) }
+      );
 
       console.log("Hourly limit hit, rescheduled:", emailJob.id);
       return;
     }
 
-    // Mark as processing
-    const [lockResult]: any = await db.query(
+    // 5️⃣ Atomic lock (CRITICAL)
+    const lockResult = await db.query(
       `
       UPDATE email_jobs
       SET status = 'processing'
-      WHERE id = ? AND status = 'scheduled'
+      WHERE id = $1 AND status = 'scheduled'
       `,
       [emailJob.id]
     );
 
-    if (lockResult.affectedRows === 0) {
-      console.log("Could not acquire job lock, skipping");
+    if (lockResult.rowCount === 0) {
+      console.log("Could not acquire lock, skipping");
       return;
     }
 
-    // SMTP
+    // 6️⃣ Send email
     try {
       const info = await transporter.sendMail({
-      from: sender_email,
-      to: emailJob.recipient_email,
-      subject: "Scheduled Email",
-      text: "Hello from Email Scheduler",
-    });
+        from: sender_email,
+        to: emailJob.recipient_email,
+        subject: "Scheduled Email",
+        text: "Hello from Email Scheduler",
+      });
 
-    console.log(
-      "Email sent. Preview URL:",
-      nodemailer.getTestMessageUrl(info)
-    );
+      console.log(
+        "Email sent. Preview URL:",
+        nodemailer.getTestMessageUrl(info)
+      );
 
-    await db.query(
-      "UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = ?",
-      [emailJob.id]
-    );
-  } catch (err: any) {
-    const attempts = job.attemptsMade + 1;
-
-    if (attempts >= 3) {
       await db.query(
-        "UPDATE email_jobs SET status = 'failed', error_message = ? WHERE id = ?",
+        "UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = $1",
+        [emailJob.id]
+      );
+    } catch (err: any) {
+      await db.query(
+        "UPDATE email_jobs SET status = 'failed', error_message = $1 WHERE id = $2",
         [err.message, emailJob.id]
       );
+      throw err;
     }
-
-    throw err;
-  }
   },
   {
     connection: redis,

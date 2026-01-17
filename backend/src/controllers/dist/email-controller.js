@@ -57,7 +57,7 @@ function scheduleEmails(req, res) {
                     userId = req.user.userId;
                     batchId = crypto_1.randomUUID();
                     // 1️⃣ Create batch
-                    return [4 /*yield*/, db_1.db.query("INSERT INTO email_batches\n       (id, user_id, sender_email, subject, body, start_time,\n        delay_between_emails_seconds, hourly_limit, total_emails)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+                    return [4 /*yield*/, db_1.db.query("\n      INSERT INTO email_batches\n      (id, user_id, sender_email, subject, body, start_time,\n       delay_between_emails_seconds, hourly_limit, total_emails)\n      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)\n      ", [
                             batchId,
                             userId,
                             senderEmail,
@@ -78,14 +78,14 @@ function scheduleEmails(req, res) {
                     jobId = crypto_1.randomUUID();
                     scheduledAt = new Date(new Date(startTime).getTime() +
                         i * delayBetweenEmailsSeconds * 1000);
-                    return [4 /*yield*/, db_1.db.query("INSERT INTO email_jobs\n         (id, batch_id, recipient_email, scheduled_at)\n         VALUES (?, ?, ?, ?)", [jobId, batchId, recipients[i], scheduledAt])];
+                    return [4 /*yield*/, db_1.db.query("\n        INSERT INTO email_jobs\n        (id, batch_id, recipient_email, scheduled_at)\n        VALUES ($1,$2,$3,$4)\n        ", [jobId, batchId, recipients[i], scheduledAt])];
                 case 3:
                     _c.sent();
                     delayMs = scheduledAt.getTime() - Date.now();
                     return [4 /*yield*/, queue_1.emailQueue.add("send-email", { emailJobId: jobId }, { delay: Math.max(delayMs, 0) })];
                 case 4:
                     bullJob = _c.sent();
-                    return [4 /*yield*/, db_1.db.query("UPDATE email_jobs SET bull_job_id = ? WHERE id = ?", [bullJob.id, jobId])];
+                    return [4 /*yield*/, db_1.db.query("UPDATE email_jobs SET bull_job_id = $1 WHERE id = $2", [bullJob.id, jobId])];
                 case 5:
                     _c.sent();
                     _c.label = 6;
@@ -119,9 +119,9 @@ function getScheduledEmails(req, res) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
                     userId = req.user.userId;
-                    return [4 /*yield*/, db_1.db.query("\n      SELECT\n        ej.id,\n        ej.recipient_email,\n        ej.scheduled_at,\n        ej.status,\n        eb.subject\n      FROM email_jobs ej\n      JOIN email_batches eb ON ej.batch_id = eb.id\n      WHERE eb.user_id = ?\n        AND ej.status = 'scheduled'\n      ORDER BY ej.scheduled_at ASC\n      ", [userId])];
+                    return [4 /*yield*/, db_1.db.query("\n      SELECT\n        ej.id,\n        ej.recipient_email,\n        ej.scheduled_at,\n        ej.status,\n        eb.subject\n      FROM email_jobs ej\n      JOIN email_batches eb ON ej.batch_id = eb.id\n      WHERE eb.user_id = $1\n        AND ej.status = 'scheduled'\n      ORDER BY ej.scheduled_at ASC\n      ", [userId])];
                 case 1:
-                    rows = (_a.sent())[0];
+                    rows = (_a.sent()).rows;
                     res.json(rows);
                     return [3 /*break*/, 3];
                 case 2:
@@ -146,9 +146,9 @@ function getSentEmails(req, res) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
                     userId = req.user.userId;
-                    return [4 /*yield*/, db_1.db.query("\n      SELECT\n        ej.id,\n        ej.recipient_email,\n        ej.sent_at,\n        ej.status,\n        eb.subject\n      FROM email_jobs ej\n      JOIN email_batches eb ON ej.batch_id = eb.id\n      WHERE eb.user_id = ?\n        AND ej.status = 'sent'\n      ORDER BY ej.sent_at DESC\n      ", [userId])];
+                    return [4 /*yield*/, db_1.db.query("\n      SELECT\n        ej.id,\n        ej.recipient_email,\n        ej.sent_at,\n        ej.status,\n        eb.subject\n      FROM email_jobs ej\n      JOIN email_batches eb ON ej.batch_id = eb.id\n      WHERE eb.user_id = $1\n        AND ej.status = 'sent'\n      ORDER BY ej.sent_at DESC\n      ", [userId])];
                 case 1:
-                    rows = (_a.sent())[0];
+                    rows = (_a.sent()).rows;
                     res.json(rows);
                     return [3 /*break*/, 3];
                 case 2:
@@ -162,6 +162,9 @@ function getSentEmails(req, res) {
     });
 }
 exports.getSentEmails = getSentEmails;
+/**
+ * GET /emails/:id
+ */
 function getEmailById(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var userId, id, rows;
@@ -170,9 +173,9 @@ function getEmailById(req, res) {
                 case 0:
                     userId = req.user.userId;
                     id = req.params.id;
-                    return [4 /*yield*/, db_1.db.query("\n    SELECT\n      ej.id,\n      ej.recipient_email,\n      ej.status,\n      ej.scheduled_at,\n      ej.sent_at,\n      eb.subject,\n      eb.body\n    FROM email_jobs ej\n    JOIN email_batches eb ON ej.batch_id = eb.id\n    WHERE ej.id = ?\n      AND eb.user_id = ?\n    ", [id, userId])];
+                    return [4 /*yield*/, db_1.db.query("\n    SELECT\n      ej.id,\n      ej.recipient_email,\n      ej.status,\n      ej.scheduled_at,\n      ej.sent_at,\n      eb.subject,\n      eb.body\n    FROM email_jobs ej\n    JOIN email_batches eb ON ej.batch_id = eb.id\n    WHERE ej.id = $1\n      AND eb.user_id = $2\n    ", [id, userId])];
                 case 1:
-                    rows = (_a.sent())[0];
+                    rows = (_a.sent()).rows;
                     if (rows.length === 0) {
                         return [2 /*return*/, res.status(404).json({ error: "Email not found" })];
                     }

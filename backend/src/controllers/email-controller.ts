@@ -27,10 +27,12 @@ export async function scheduleEmails(req: Request, res: Response) {
 
     // 1️⃣ Create batch
     await db.query(
-      `INSERT INTO email_batches
-       (id, user_id, sender_email, subject, body, start_time,
-        delay_between_emails_seconds, hourly_limit, total_emails)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `
+      INSERT INTO email_batches
+      (id, user_id, sender_email, subject, body, start_time,
+       delay_between_emails_seconds, hourly_limit, total_emails)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      `,
       [
         batchId,
         userId,
@@ -54,9 +56,11 @@ export async function scheduleEmails(req: Request, res: Response) {
       );
 
       await db.query(
-        `INSERT INTO email_jobs
-         (id, batch_id, recipient_email, scheduled_at)
-         VALUES (?, ?, ?, ?)`,
+        `
+        INSERT INTO email_jobs
+        (id, batch_id, recipient_email, scheduled_at)
+        VALUES ($1,$2,$3,$4)
+        `,
         [jobId, batchId, recipients[i], scheduledAt]
       );
 
@@ -69,7 +73,7 @@ export async function scheduleEmails(req: Request, res: Response) {
       );
 
       await db.query(
-        "UPDATE email_jobs SET bull_job_id = ? WHERE id = ?",
+        "UPDATE email_jobs SET bull_job_id = $1 WHERE id = $2",
         [bullJob.id, jobId]
       );
     }
@@ -92,7 +96,7 @@ export async function getScheduledEmails(req: Request, res: Response) {
   try {
     const userId = (req as any).user.userId;
 
-    const [rows]: any = await db.query(
+    const { rows } = await db.query(
       `
       SELECT
         ej.id,
@@ -102,7 +106,7 @@ export async function getScheduledEmails(req: Request, res: Response) {
         eb.subject
       FROM email_jobs ej
       JOIN email_batches eb ON ej.batch_id = eb.id
-      WHERE eb.user_id = ?
+      WHERE eb.user_id = $1
         AND ej.status = 'scheduled'
       ORDER BY ej.scheduled_at ASC
       `,
@@ -123,7 +127,7 @@ export async function getSentEmails(req: Request, res: Response) {
   try {
     const userId = (req as any).user.userId;
 
-    const [rows]: any = await db.query(
+    const { rows } = await db.query(
       `
       SELECT
         ej.id,
@@ -133,7 +137,7 @@ export async function getSentEmails(req: Request, res: Response) {
         eb.subject
       FROM email_jobs ej
       JOIN email_batches eb ON ej.batch_id = eb.id
-      WHERE eb.user_id = ?
+      WHERE eb.user_id = $1
         AND ej.status = 'sent'
       ORDER BY ej.sent_at DESC
       `,
@@ -147,11 +151,14 @@ export async function getSentEmails(req: Request, res: Response) {
   }
 }
 
+/**
+ * GET /emails/:id
+ */
 export async function getEmailById(req: Request, res: Response) {
   const userId = (req as any).user.userId;
   const { id } = req.params;
 
-  const [rows]: any = await db.query(
+  const { rows } = await db.query(
     `
     SELECT
       ej.id,
@@ -163,8 +170,8 @@ export async function getEmailById(req: Request, res: Response) {
       eb.body
     FROM email_jobs ej
     JOIN email_batches eb ON ej.batch_id = eb.id
-    WHERE ej.id = ?
-      AND eb.user_id = ?
+    WHERE ej.id = $1
+      AND eb.user_id = $2
     `,
     [id, userId]
   );

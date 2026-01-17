@@ -53,6 +53,9 @@ exports.googleCallbackController = function (req, res) {
     }, process.env.JWT_SECRET, { expiresIn: "7d" });
     return res.redirect("http://localhost:5173/auth/callback?token=" + token);
 };
+/**
+ * GET /auth/me
+ */
 function getMe(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var userId, rows;
@@ -60,9 +63,9 @@ function getMe(req, res) {
             switch (_a.label) {
                 case 0:
                     userId = req.user.userId;
-                    return [4 /*yield*/, db_1.db.query("SELECT id, name, email, avatar_url FROM users WHERE id = ?", [userId])];
+                    return [4 /*yield*/, db_1.db.query("SELECT id, name, email, avatar_url FROM users WHERE id = $1", [userId])];
                 case 1:
-                    rows = (_a.sent())[0];
+                    rows = (_a.sent()).rows;
                     if (rows.length === 0) {
                         return [2 /*return*/, res.status(404).json({ error: "User not found" })];
                     }

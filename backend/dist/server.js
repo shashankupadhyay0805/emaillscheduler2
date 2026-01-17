@@ -15,7 +15,7 @@ const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.get("/", async (_req, res) => {
-    const [rows] = await db_1.db.query("SELECT 'API running' AS msg");
+    const { rows } = await db_1.db.query("SELECT * FROM users");
     res.json(rows);
 });
 app.use(email_router_1.default);

@@ -1,16 +1,13 @@
 "use strict";
 exports.__esModule = true;
 exports.db = void 0;
-var promise_1 = require("mysql2/promise");
+var pg_1 = require("pg");
 var dotenv_1 = require("dotenv");
 dotenv_1["default"].config();
-exports.db = promise_1["default"].createPool({
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10
+exports.db = new pg_1.Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
 });
-console.log(process.env.DB_NAME + " Connected");
+exports.db.on("connect", function () {
+    console.log("PostgreSQL Connected");
+});

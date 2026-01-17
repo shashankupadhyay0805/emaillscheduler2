@@ -14,7 +14,7 @@ passport.use(
       _accessToken: string,
       _refreshToken: string,
       profile: any,
-      done: (error: any, user?: any) => void
+      done
     ) => {
       try {
         const googleId = profile.id;
@@ -27,8 +27,9 @@ passport.use(
         const name = profile.displayName;
         const avatar = profile.photos?.[0]?.value;
 
-        const [rows]: any = await db.query(
-          "SELECT * FROM users WHERE google_id = ?",
+        // 1️⃣ Check existing user
+        const { rows } = await db.query(
+          "SELECT * FROM users WHERE google_id = $1",
           [googleId]
         );
 
@@ -44,8 +45,10 @@ passport.use(
           };
 
           await db.query(
-            `INSERT INTO users (id, google_id, name, email, avatar_url)
-             VALUES (?, ?, ?, ?, ?)`,
+            `
+            INSERT INTO users (id, google_id, name, email, avatar_url)
+            VALUES ($1, $2, $3, $4, $5)
+            `,
             [
               user.id,
               user.google_id,

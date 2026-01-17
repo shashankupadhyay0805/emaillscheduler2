@@ -79,6 +79,8 @@ export default function Compose() {
     }
   };
 
+  console.log("Attached file:", attachment?.name);
+  
   return (
     <div className="flex h-screen bg-white">
       <div className="flex flex-1 flex-col">

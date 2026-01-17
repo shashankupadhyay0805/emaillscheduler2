@@ -1,15 +1,10 @@
 import { createContext } from "react";
-
-interface JwtPayload {
-  userId: string;
-  email: string;
-  exp: number;
-}
+import type { User } from "../types/users";
 
 export interface AuthContextType {
-  user: JwtPayload | null;
+  user: User | null;
   token: string | null;
-  login: (token: string) => void;
+  login: (user: User, token: string) => void;
   logout: () => void;
 }
 

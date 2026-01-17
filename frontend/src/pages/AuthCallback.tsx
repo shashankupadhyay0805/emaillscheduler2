@@ -1,27 +1,28 @@
-import { useEffect, useContext } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 
 export default function AuthCallback() {
+  const auth = useAuth();
   const navigate = useNavigate();
-  const auth = useContext(AuthContext);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
 
-    if (!auth) {
-      navigate("/");
-      return;
-    }
+    if (!token || !auth) return;
 
-    if (token) {
-      auth.login(token);
-      navigate("/dashboard");
-    } else {
-      navigate("/");
-    }
-  }, [navigate, auth]);
+    fetch("http://localhost:4000/auth/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => res.json())
+      .then(user => {
+        auth.login(user, token); // ✅ FIXED
+        navigate("/dashboard");
+      });
+  }, [auth, navigate]);
 
-  return <div>Logging you in...</div>;
+  return <p>Logging you in...</p>;
 }

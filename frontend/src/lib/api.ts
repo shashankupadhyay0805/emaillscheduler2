@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:4000";
+const API_BASE = "https://emaillscheduler2.onrender.com/";
 
 export async function apiFetch(
   path: string,

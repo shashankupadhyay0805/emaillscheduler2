@@ -63,9 +63,9 @@ function getMe(req, res) {
             switch (_a.label) {
                 case 0:
                     userId = req.user.userId;
-                    return [4 /*yield*/, db_1.db.query("SELECT id, name, email, avatar_url FROM users WHERE id = $1", [userId])];
+                    return [4 /*yield*/, db_1.db.query("SELECT id, name, email, avatar_url FROM users WHERE id = ?", [userId])];
                 case 1:
-                    rows = (_a.sent()).rows;
+                    rows = (_a.sent())[0];
                     if (rows.length === 0) {
                         return [2 /*return*/, res.status(404).json({ error: "User not found" })];
                     }

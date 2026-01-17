@@ -33,8 +33,8 @@ export const googleCallbackController = (req: Request, res: Response) => {
 export async function getMe(req: Request, res: Response) {
   const userId = (req as any).user.userId;
 
-  const { rows } = await db.query(
-    "SELECT id, name, email, avatar_url FROM users WHERE id = $1",
+  const [rows]: any = await db.query(
+    "SELECT id, name, email, avatar_url FROM users WHERE id = ?",
     [userId]
   );
 

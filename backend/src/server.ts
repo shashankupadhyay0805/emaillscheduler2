@@ -38,6 +38,7 @@ app.listen(PORT, async () => {
     try {
       await db.query("SELECT 1");
       startWorker();
+      console.log("BullMQ connected");
     } catch (err) {
       console.error("❌ Worker not started — DB unavailable");
     }

@@ -36,9 +36,9 @@ app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   if (process.env.RUN_WORKER === "true") {
     try {
+      console.log("BullMQ connected");
       await db.query("SELECT 1");
       startWorker();
-      console.log("BullMQ connected");
     } catch (err) {
       console.error("❌ Worker not started — DB unavailable");
     }

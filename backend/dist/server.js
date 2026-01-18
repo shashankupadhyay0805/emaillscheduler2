@@ -10,6 +10,7 @@ const email_router_1 = __importDefault(require("./routers/email-router"));
 const db_1 = require("./config/db");
 const passport_1 = __importDefault(require("./config/passport"));
 const login_router_1 = __importDefault(require("./routers/login-router"));
+const worker_1 = require("./config/worker");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
@@ -28,6 +29,14 @@ app.get("/", async (_req, res) => {
 app.use("/emails", email_router_1.default);
 app.use("/auth", login_router_1.default);
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+app.listen(PORT, async () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    try {
+        await db_1.db.query("SELECT 1");
+        (0, worker_1.startWorker)();
+        console.log("👷 Worker running (same process)");
+    }
+    catch (err) {
+        console.error("❌ Worker not started", err);
+    }
 });

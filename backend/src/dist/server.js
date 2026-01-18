@@ -43,6 +43,7 @@ var email_router_1 = require("./routers/email-router");
 var db_1 = require("./config/db");
 var passport_1 = require("./config/passport");
 var login_router_1 = require("./routers/login-router");
+var worker_1 = require("./config/worker");
 dotenv_1["default"].config();
 var app = express_1["default"]();
 app.use(cors_1["default"]({
@@ -69,6 +70,26 @@ app.get("/", function (_req, res) { return __awaiter(void 0, void 0, void 0, fun
 app.use("/emails", email_router_1["default"]);
 app.use("/auth", login_router_1["default"]);
 var PORT = process.env.PORT || 4000;
-app.listen(PORT, function () {
-    console.log("Server running on port " + PORT);
-});
+app.listen(PORT, function () { return __awaiter(void 0, void 0, void 0, function () {
+    var err_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                console.log("\uD83D\uDE80 Server running on port " + PORT);
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, db_1.db.query("SELECT 1")];
+            case 2:
+                _a.sent();
+                worker_1.startWorker();
+                console.log("👷 Worker running (same process)");
+                return [3 /*break*/, 4];
+            case 3:
+                err_1 = _a.sent();
+                console.error("❌ Worker not started", err_1);
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); });

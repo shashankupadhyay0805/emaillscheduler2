@@ -82,14 +82,13 @@ export function startWorker() {
 
       if (lock.rowCount === 0) return;
 
-      const info = await transporter.sendMail({
-        from: sender_email,
-        to: emailJob.recipient_email,
-        subject: "Scheduled Email",
-        text: "Hello from Email Scheduler",
-      });
+      // 🔁 Simulate email send (Render blocks SMTP)
+      console.log("📨 Simulating email send to:", emailJob.recipient_email);
 
-      console.log("✅ Sent:", nodemailer.getTestMessageUrl(info));
+      // simulate network / SMTP delay
+      await new Promise((res) => setTimeout(res, 500));
+
+      console.log("✅ Email marked as sent (simulated)");
 
       await db.query(
         "UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = $1",

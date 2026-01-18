@@ -42,8 +42,6 @@ var ioredis_1 = require("ioredis");
 var dotenv_1 = require("dotenv");
 var db_1 = require("./db");
 var queue_1 = require("./queue");
-var nodemailer_1 = require("nodemailer");
-var mailer_1 = require("./mailer");
 dotenv_1["default"].config();
 function getHourKey(senderEmail, date) {
     var yyyy = date.getFullYear();
@@ -64,7 +62,7 @@ function startWorker() {
         maxRetriesPerRequest: null
     });
     var worker = new bullmq_1.Worker("email-queue", function (job) { return __awaiter(_this, void 0, void 0, function () {
-        var emailJobId, jobRows, emailJob, batchRows, _a, sender_email, hourly_limit, now, hourKey, currentCount, nextRun, lock, info;
+        var emailJobId, jobRows, emailJob, batchRows, _a, sender_email, hourly_limit, now, hourKey, currentCount, nextRun, lock;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -109,15 +107,14 @@ function startWorker() {
                     lock = _b.sent();
                     if (lock.rowCount === 0)
                         return [2 /*return*/];
-                    return [4 /*yield*/, mailer_1.transporter.sendMail({
-                            from: sender_email,
-                            to: emailJob.recipient_email,
-                            subject: "Scheduled Email",
-                            text: "Hello from Email Scheduler"
-                        })];
+                    // 🔁 Simulate email send (Render blocks SMTP)
+                    console.log("📨 Simulating email send to:", emailJob.recipient_email);
+                    // simulate network / SMTP delay
+                    return [4 /*yield*/, new Promise(function (res) { return setTimeout(res, 500); })];
                 case 10:
-                    info = _b.sent();
-                    console.log("✅ Sent:", nodemailer_1["default"].getTestMessageUrl(info));
+                    // simulate network / SMTP delay
+                    _b.sent();
+                    console.log("✅ Email marked as sent (simulated)");
                     return [4 /*yield*/, db_1.db.query("UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = $1", [emailJob.id])];
                 case 11:
                     _b.sent();

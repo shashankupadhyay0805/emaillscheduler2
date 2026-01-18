@@ -34,7 +34,6 @@ export function startWorker() {
       const { emailJobId } = job.data;
       console.log("👷 Processing job:", emailJobId);
 
-      // Fetch email job
       const { rows: jobRows } = await db.query(
         "SELECT * FROM email_jobs WHERE id = $1",
         [emailJobId]
@@ -43,35 +42,24 @@ export function startWorker() {
       if (jobRows.length === 0) return;
       const emailJob = jobRows[0];
 
-      // Idempotency
-      if (emailJob.status !== "scheduled") {
-        console.log("Skipping job, status:", emailJob.status);
-        return;
-      }
+      if (emailJob.status !== "scheduled") return;
 
-      // Fetch batch (sender + hourly limit) 
       const { rows: batchRows } = await db.query(
         "SELECT sender_email, hourly_limit FROM email_batches WHERE id = $1",
         [emailJob.batch_id]
       );
 
       if (batchRows.length === 0) return;
-
       const { sender_email, hourly_limit } = batchRows[0];
 
-      // Rate limiting (Redis, cross-worker safe)
       const now = new Date();
       const hourKey = getHourKey(sender_email, now);
 
       const currentCount = await redis.incr(hourKey);
-      if (currentCount === 1) {
-        await redis.expire(hourKey, 3600);
-      }
+      if (currentCount === 1) await redis.expire(hourKey, 3600);
 
       if (currentCount > hourly_limit) {
         const nextRun = startOfNextHour(now);
-        const delayMs = nextRun.getTime() - Date.now();
-
         await db.query(
           "UPDATE email_jobs SET scheduled_at = $1 WHERE id = $2",
           [nextRun, emailJob.id]
@@ -80,57 +68,33 @@ export function startWorker() {
         await emailQueue.add(
           "send-email",
           { emailJobId: emailJob.id },
-          { delay: Math.max(delayMs, 0) }
+          { delay: nextRun.getTime() - Date.now() }
         );
-
-        console.log("⏳ Hourly limit hit, rescheduled:", emailJob.id);
         return;
       }
 
-      // Atomic DB lock (CRITICAL)
       const lock = await db.query(
-        `
-        UPDATE email_jobs
-        SET status = 'processing'
-        WHERE id = $1 AND status = 'scheduled'
-        `,
+        `UPDATE email_jobs
+         SET status = 'processing'
+         WHERE id = $1 AND status = 'scheduled'`,
         [emailJob.id]
       );
 
-      if (lock.rowCount === 0) {
-        console.log("⚠️ Lock not acquired, skipping:", emailJob.id);
-        return;
-      }
+      if (lock.rowCount === 0) return;
 
-      //  Send email
-      try {
-        const info = await transporter.sendMail({
-          from: sender_email,
-          to: emailJob.recipient_email,
-          subject: "Scheduled Email",
-          text: "Hello from Email Scheduler",
-        });
+      const info = await transporter.sendMail({
+        from: sender_email,
+        to: emailJob.recipient_email,
+        subject: "Scheduled Email",
+        text: "Hello from Email Scheduler",
+      });
 
-        console.log(
-          "✅ Email sent. Preview:",
-          nodemailer.getTestMessageUrl(info)
-        );
+      console.log("✅ Sent:", nodemailer.getTestMessageUrl(info));
 
-        await db.query(
-          "UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = $1",
-          [emailJob.id]
-        );
-      } catch (err: any) {
-        await db.query(
-          `
-          UPDATE email_jobs
-          SET status = 'failed', error_message = $1
-          WHERE id = $2
-          `,
-          [err.message, emailJob.id]
-        );
-        throw err;
-      }
+      await db.query(
+        "UPDATE email_jobs SET status = 'sent', sent_at = NOW() WHERE id = $1",
+        [emailJob.id]
+      );
     },
     {
       connection: redis,
@@ -142,5 +106,5 @@ export function startWorker() {
     console.error("❌ Job failed:", job?.id, err.message);
   });
 
-  console.log("🚀 BullMQ worker started");
+  console.log("🚀 Worker started");
 }

@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "worker": "node dist/config/worker.js"
+    "worker": "node dist/worker.js"
   },
   "keywords": [],
   "author": "",

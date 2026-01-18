@@ -5,7 +5,6 @@ import emailRoutes from "./routers/email-router";
 import { db } from "./config/db";
 import passport from "./config/passport";
 import authRoutes from "./routers/login-router";
-import { startWorker } from "./config/worker";
 
 dotenv.config();
 
@@ -32,14 +31,6 @@ app.use("/emails", emailRoutes);
 app.use("/auth", authRoutes);
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, async () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  if (process.env.RUN_WORKER === "true") {
-    try {
-      await db.query("SELECT 1");
-      startWorker();
-    } catch (err) {
-      console.error("❌ Worker not started — DB unavailable");
-    }
-  }
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
